@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flight Watcher — Painel</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+  h1 { font-size: 1.4rem; }
+  h2 { font-size: 1.1rem; margin-top: 2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; }
+  label { display: block; margin-top: 0.6rem; font-size: 0.85rem; color: #444; }
+  input, select { width: 100%; padding: 0.4rem; margin-top: 0.2rem; box-sizing: border-box; }
+  button { margin-top: 0.8rem; padding: 0.5rem 1rem; cursor: pointer; }
+  .row { display: flex; gap: 0.5rem; }
+  .row > div { flex: 1; }
+  #flights li { margin-bottom: 0.6rem; padding: 0.6rem; background: #f6f6f6; border-radius: 6px; list-style: none; }
+  #flights { padding: 0; }
+  #log { margin-top: 1rem; padding: 0.6rem; border-radius: 6px; font-size: 0.85rem; white-space: pre-wrap; }
+  .ok { background: #e6f7e6; color: #1a5c1a; }
+  .err { background: #fce8e8; color: #8a1a1a; }
+  .muted { color: #888; font-size: 0.8rem; }
+</style>
+</head>
+<body>
+
+<h1>✈️ Flight Watcher — Painel</h1>
+<p class="muted">Adiciona/remove voos monitorados sem precisar acessar github.com diretamente ou editar código.</p>
+
+<h2>1. Token de acesso</h2>
+<p class="muted">
+  Crie um <b>fine-grained personal access token</b> em
+  github.com/settings/tokens, com acesso só ao repositório
+  <code>tiagoirber/flight-watcher</code> e permissões:
+  <b>Actions: Read and write</b> e <b>Contents: Read and write</b>.
+  Cole aqui — fica salvo só no seu navegador (localStorage), nunca é enviado a nada além da API do GitHub.
+</p>
+<input type="password" id="token" placeholder="github_pat_...">
+<button onclick="saveToken()">Salvar token</button>
+<button onclick="clearToken()">Limpar token</button>
+<span id="tokenStatus" class="muted"></span>
+
+<h2>2. Voos monitorados</h2>
+<button onclick="loadFlights()">Atualizar lista</button>
+<ul id="flights"></ul>
+
+<h2>3. Adicionar voo</h2>
+<label>ID único (ex: bsb-cgh-nov26)</label>
+<input id="f_id">
+
+<div class="row">
+  <div>
+    <label>Origem (IATA, ex: BSB)</label>
+    <input id="f_origin">
+  </div>
+  <div>
+    <label>Destino (IATA, ex: CGH)</label>
+    <input id="f_destination">
+  </div>
+</div>
+
+<div class="row">
+  <div>
+    <label>Nome da cidade de origem</label>
+    <input id="f_origin_name">
+  </div>
+  <div>
+    <label>Nome da cidade de destino</label>
+    <input id="f_destination_name">
+  </div>
+</div>
+
+<div class="row">
+  <div>
+    <label>Data de ida (AAAA-MM-DD)</label>
+    <input id="f_departure" placeholder="2026-12-01">
+  </div>
+  <div>
+    <label>Data de volta (AAAA-MM-DD)</label>
+    <input id="f_return" placeholder="2026-12-05">
+  </div>
+</div>
+
+<label>Avisar só abaixo de (R$, opcional)</label>
+<input id="f_alert_below" placeholder="deixe vazio para avisar sempre">
+
+<button onclick="addFlight()">Adicionar voo</button>
+
+<div id="log"></div>
+
+<script>
+const OWNER = "tiagoirber";
+const REPO = "flight-watcher";
+const WORKFLOW = "manage-flights.yml";
+const API = `https://api.github.com/repos/${OWNER}/${REPO}`;
+
+function getToken() {
+  return localStorage.getItem("fw_token") || "";
+}
+
+function saveToken() {
+  const t = document.getElementById("token").value.trim();
+  if (t) localStorage.setItem("fw_token", t);
+  updateTokenStatus();
+}
+
+function clearToken() {
+  localStorage.removeItem("fw_token");
+  document.getElementById("token").value = "";
+  updateTokenStatus();
+}
+
+function updateTokenStatus() {
+  document.getElementById("tokenStatus").textContent = getToken() ? "Token salvo." : "Nenhum token salvo.";
+}
+
+function log(msg, ok) {
+  const el = document.getElementById("log");
+  el.textContent = msg;
+  el.className = ok ? "ok" : "err";
+}
+
+async function githubFetch(path, options = {}) {
+  const token = getToken();
+  if (!token) throw new Error("Salve um token primeiro.");
+  const res = await fetch(`${API}${path}`, {
+    ...options,
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Accept": "application/vnd.github+json",
+      ...(options.headers || {}),
+    },
+  });
+  return res;
+}
+
+async function loadFlights() {
+  try {
+    const res = await githubFetch("/contents/config/flights.json");
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    const data = await res.json();
+    const content = JSON.parse(decodeURIComponent(escape(atob(data.content))));
+    const ul = document.getElementById("flights");
+    ul.innerHTML = "";
+    content.flights.forEach(f => {
+      const li = document.createElement("li");
+      const alertText = f.alert_below ? ` | avisa abaixo de R$ ${f.alert_below}` : " | avisa sempre que mudar";
+      li.innerHTML = `<b>${f.id}</b>: ${f.origin} → ${f.destination} (${f.departure} a ${f.return})${alertText} `;
+      const btn = document.createElement("button");
+      btn.textContent = "Remover";
+      btn.onclick = () => removeFlight(f.id);
+      li.appendChild(btn);
+      ul.appendChild(li);
+    });
+    log("Lista atualizada.", true);
+  } catch (e) {
+    log(`Erro ao carregar voos: ${e.message}`, false);
+  }
+}
+
+async function dispatch(inputs) {
+  const res = await githubFetch(`/actions/workflows/${WORKFLOW}/dispatches`, {
+    method: "POST",
+    body: JSON.stringify({ ref: "master", inputs }),
+  });
+  if (res.status !== 204) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+}
+
+async function addFlight() {
+  const inputs = {
+    action: "add",
+    id: document.getElementById("f_id").value.trim(),
+    origin: document.getElementById("f_origin").value.trim().toUpperCase(),
+    destination: document.getElementById("f_destination").value.trim().toUpperCase(),
+    origin_name: document.getElementById("f_origin_name").value.trim(),
+    destination_name: document.getElementById("f_destination_name").value.trim(),
+    departure: document.getElementById("f_departure").value.trim(),
+    return_date: document.getElementById("f_return").value.trim(),
+    alert_below: document.getElementById("f_alert_below").value.trim(),
+  };
+  if (!inputs.id || !inputs.origin || !inputs.destination || !inputs.origin_name || !inputs.destination_name || !inputs.departure || !inputs.return_date) {
+    log("Preencha todos os campos obrigatórios.", false);
+    return;
+  }
+  try {
+    await dispatch(inputs);
+    log(`Voo '${inputs.id}' enviado para adição. Pode levar ~1 min para aparecer — clique em "Atualizar lista".`, true);
+  } catch (e) {
+    log(`Erro ao adicionar: ${e.message}`, false);
+  }
+}
+
+async function removeFlight(id) {
+  if (!confirm(`Remover o voo '${id}'?`)) return;
+  try {
+    await dispatch({ action: "remove", id });
+    log(`Voo '${id}' enviado para remoção. Pode levar ~1 min — clique em "Atualizar lista".`, true);
+  } catch (e) {
+    log(`Erro ao remover: ${e.message}`, false);
+  }
+}
+
+updateTokenStatus();
+</script>
+
+</body>
+</html>
