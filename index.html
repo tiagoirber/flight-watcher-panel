@@ -32,12 +32,18 @@
   github.com/settings/tokens, com acesso só ao repositório
   <code>tiagoirber/flight-watcher</code> e permissões:
   <b>Actions: Read and write</b> e <b>Contents: Read and write</b>.
-  Cole aqui — fica salvo só no seu navegador (localStorage), nunca é enviado a nada além da API do GitHub.
+  Cole aqui — fica salvo no seu navegador (localStorage) e, se você aceitar o
+  aviso de "salvar senha?" do navegador ao clicar em Salvar, ele preenche
+  sozinho da próxima vez, inclusive em outros navegadores/dispositivos
+  sincronizados com a mesma conta. Nunca é enviado a nada além da API do GitHub.
 </p>
-<input type="password" id="token" placeholder="github_pat_...">
-<button onclick="saveToken()">Salvar token</button>
-<button onclick="clearToken()">Limpar token</button>
-<span id="tokenStatus" class="muted"></span>
+<form id="tokenForm" autocomplete="on">
+  <input type="text" name="username" value="flight-watcher" autocomplete="username" style="display:none">
+  <input type="password" id="token" name="password" autocomplete="current-password" placeholder="github_pat_...">
+  <button type="submit">Salvar token</button>
+  <button type="button" onclick="clearToken()">Limpar token</button>
+  <span id="tokenStatus" class="muted"></span>
+</form>
 
 <h2>2. Voos monitorados</h2>
 <button onclick="loadFlights()">Atualizar lista</button>
@@ -198,6 +204,17 @@ async function removeFlight(id) {
     log(`Erro ao remover: ${e.message}`, false);
   }
 }
+
+document.getElementById("tokenForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  saveToken();
+});
+
+document.getElementById("token").addEventListener("input", () => {
+  const t = document.getElementById("token").value.trim();
+  if (t) localStorage.setItem("fw_token", t);
+  updateTokenStatus();
+});
 
 updateTokenStatus();
 </script>
