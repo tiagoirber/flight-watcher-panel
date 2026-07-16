@@ -103,9 +103,20 @@ function getToken() {
   return localStorage.getItem("fw_token") || "";
 }
 
+function looksLikeGitHubToken(t) {
+  return /^(github_pat_|ghp_|gho_|ghu_|ghs_|ghr_)[A-Za-z0-9_]{20,}$/.test(t);
+}
+
 function saveToken() {
   const t = document.getElementById("token").value.trim();
-  if (t) localStorage.setItem("fw_token", t);
+  const status = document.getElementById("tokenStatus");
+  if (!t) return;
+  if (!looksLikeGitHubToken(t)) {
+    status.textContent = "Isso não parece um token do GitHub (deve começar com github_pat_ ou ghp_) — não foi salvo. Se o navegador preencheu isso sozinho, é autofill de outra senha salva para este site — apague e cole o token manualmente.";
+    status.className = "err";
+    return;
+  }
+  localStorage.setItem("fw_token", t);
   updateTokenStatus();
 }
 
@@ -116,7 +127,9 @@ function clearToken() {
 }
 
 function updateTokenStatus() {
-  document.getElementById("tokenStatus").textContent = getToken() ? "Token salvo." : "Nenhum token salvo.";
+  const status = document.getElementById("tokenStatus");
+  status.className = "muted";
+  status.textContent = getToken() ? "Token salvo." : "Nenhum token salvo.";
 }
 
 function log(msg, ok) {
@@ -212,8 +225,10 @@ document.getElementById("tokenForm").addEventListener("submit", (e) => {
 
 document.getElementById("token").addEventListener("input", () => {
   const t = document.getElementById("token").value.trim();
-  if (t) localStorage.setItem("fw_token", t);
-  updateTokenStatus();
+  if (looksLikeGitHubToken(t)) {
+    localStorage.setItem("fw_token", t);
+    updateTokenStatus();
+  }
 });
 
 updateTokenStatus();
