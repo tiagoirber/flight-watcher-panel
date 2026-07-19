@@ -1,0 +1,97 @@
+body {
+  color: #1a1a1a;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  margin: 2rem auto;
+  max-width: 720px;
+  padding: 0 1rem;
+}
+
+h1 {
+  font-size: 1.4rem;
+}
+
+h2 {
+  border-bottom: 1px solid #ddd;
+  font-size: 1.1rem;
+  margin-top: 2rem;
+  padding-bottom: 0.3rem;
+}
+
+label {
+  color: #444;
+  display: block;
+  font-size: 0.85rem;
+  margin-top: 0.6rem;
+}
+
+input,
+select {
+  box-sizing: border-box;
+  margin-top: 0.2rem;
+  padding: 0.4rem;
+  width: 100%;
+}
+
+button {
+  cursor: pointer;
+  margin-top: 0.8rem;
+  padding: 0.5rem 1rem;
+}
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.row > div {
+  flex: 1;
+}
+
+.credential-username {
+  display: none;
+}
+
+#flights {
+  padding: 0;
+}
+
+#flights li {
+  background: #f6f6f6;
+  border-radius: 6px;
+  list-style: none;
+  margin-bottom: 0.6rem;
+  padding: 0.6rem;
+}
+
+#flights button {
+  margin-left: 0.5rem;
+}
+
+#log {
+  border-radius: 6px;
+  font-size: 0.85rem;
+  margin-top: 1rem;
+  padding: 0.6rem;
+  white-space: pre-wrap;
+}
+
+.ok {
+  background: #e6f7e6;
+  color: #1a5c1a;
+}
+
+.err {
+  background: #fce8e8;
+  color: #8a1a1a;
+}
+
+.muted {
+  color: #666;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 520px) {
+  .row {
+    display: block;
+  }
+}
