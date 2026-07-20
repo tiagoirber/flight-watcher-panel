@@ -14,6 +14,7 @@ import {
   validateManifest,
 } from "./history.mjs";
 import { calculateFlightScore } from "./score.mjs";
+import { calculateRecommendation } from "./recommendation.mjs";
 
 const OWNER = "tiagoirber";
 const REPO = "flight-watcher";
@@ -48,6 +49,20 @@ const flightScoreClassification = document.getElementById(
 const flightScoreConfidence = document.getElementById("flightScoreConfidence");
 const flightScoreJustifications = document.getElementById(
   "flightScoreJustifications"
+);
+const recommendationCard = document.getElementById("recommendationCard");
+const recommendationHeadline = document.getElementById("recommendationHeadline");
+const recommendationSummary = document.getElementById("recommendationSummary");
+const recommendationConfidence = document.getElementById(
+  "recommendationConfidence"
+);
+const recommendationReasons = document.getElementById("recommendationReasons");
+const recommendationAverage = document.getElementById("recommendationAverage");
+const recommendationTrend = document.getElementById("recommendationTrend");
+const recommendationRarity = document.getElementById("recommendationRarity");
+const recommendationDataUsed = document.getElementById("recommendationDataUsed");
+const recommendationDisclaimer = document.getElementById(
+  "recommendationDisclaimer"
 );
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
@@ -421,8 +436,7 @@ function renderHistoryTable(records) {
   historyTableBody.replaceChildren(...rows);
 }
 
-function renderFlightScore(records) {
-  const result = calculateFlightScore(records);
+function renderFlightScore(result) {
   flightScoreCard.className = `score-card score-${result.band}`;
   flightScoreValue.textContent =
     result.score === null ? "—" : `${result.score}/100`;
@@ -442,6 +456,32 @@ function renderFlightScore(records) {
   );
 }
 
+function renderRecommendation(records, scoreResult) {
+  const result = calculateRecommendation(records, scoreResult);
+  recommendationCard.className = `recommendation-card recommendation-${result.action}`;
+  recommendationHeadline.textContent = result.headline;
+  recommendationSummary.textContent = result.summary;
+  recommendationConfidence.textContent = `${result.confidence}% — ${result.confidenceLabel}`;
+  recommendationAverage.textContent =
+    result.signals.belowAverage?.label ?? "Média ainda indisponível.";
+  recommendationTrend.textContent = result.signals.trend.label;
+  recommendationRarity.textContent = result.signals.rarity.label;
+  recommendationDataUsed.textContent = `${result.dataUsed.queries} consultas, ${result.dataUsed.prices} preços, ${result.dataUsed.distinctDays} dias, Flight Score ${
+    result.dataUsed.score ?? "indisponível"
+  }.`;
+  recommendationDisclaimer.textContent = result.disclaimer;
+  const reasons = result.reasons.map((reason) => {
+    const item = document.createElement("li");
+    item.textContent = reason;
+    return item;
+  });
+  recommendationReasons.replaceChildren(...reasons);
+  recommendationCard.setAttribute(
+    "aria-label",
+    `${result.headline}, confiança ${result.confidenceLabel}`
+  );
+}
+
 function renderHistory() {
   const monitorId = historyMonitor.value;
   if (!monitorId) {
@@ -456,7 +496,9 @@ function renderHistory() {
     historyPeriod.value
   );
   const statistics = calculateStatistics(records);
-  renderFlightScore(records);
+  const scoreResult = calculateFlightScore(records);
+  renderFlightScore(scoreResult);
+  renderRecommendation(records, scoreResult);
   setText("statCurrent", formatCurrency(statistics.current));
   setText("statMinimum", formatCurrency(statistics.minimum));
   setText("statMaximum", formatCurrency(statistics.maximum));

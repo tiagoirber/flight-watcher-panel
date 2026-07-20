@@ -41,6 +41,25 @@ score final = 50 + (score bruto - 50) × confiança
 A confiança é classificada como baixa abaixo de 35%, moderada entre 35% e 69%
 e alta a partir de 70%.
 
+## Recomendações históricas
+
+As recomendações são regras descritivas sobre o período selecionado. Elas não
+preveem preços futuros nem garantem economia.
+
+“Vale considerar comprar agora” exige simultaneamente:
+
+- Flight Score de pelo menos 75;
+- confiança de pelo menos 70%;
+- preço atual pelo menos 1% abaixo da média.
+
+Quando alguma condição não é atendida, o painel recomenda esperar e continuar
+monitorando. Sem Flight Score elegível, informa que a amostra é insuficiente.
+
+Um preço só é classificado como raro com pelo menos 10 preços em cinco dias,
+posição entre os 10% menores e distância de até 5% do mínimo. A tendência usa
+os últimos cinco preços: queda até -2%, alta a partir de 2% e estabilidade no
+intervalo intermediário.
+
 ## Segurança do token
 
 O token do GitHub permanece somente na memória da aba. Ele não é salvo em
@@ -57,7 +76,7 @@ Permissões mínimas do fine-grained PAT:
 Não há dependências npm. Execute com Node 22 ou superior:
 
 ```text
-node --test tests/validation.test.mjs tests/security.test.mjs tests/history.test.mjs tests/score.test.mjs
+node --test tests/validation.test.mjs tests/security.test.mjs tests/history.test.mjs tests/score.test.mjs tests/recommendation.test.mjs
 ```
 
 Os testes não acessam a API do GitHub e não modificam o repositório principal.

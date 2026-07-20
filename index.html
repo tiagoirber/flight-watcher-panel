@@ -102,6 +102,44 @@
       <ul id="flightScoreJustifications" class="score-reasons"></ul>
     </article>
 
+    <article
+      id="recommendationCard"
+      class="recommendation-card recommendation-insufficient"
+      aria-live="polite"
+    >
+      <div class="recommendation-header">
+        <div>
+          <span class="score-label">Recomendação histórica</span>
+          <strong id="recommendationHeadline" class="recommendation-headline">
+            Aguardar mais dados
+          </strong>
+        </div>
+        <div>
+          <span class="score-label">Confiança</span>
+          <strong id="recommendationConfidence">—</strong>
+        </div>
+      </div>
+      <p id="recommendationSummary"></p>
+      <div class="recommendation-signals">
+        <div>
+          <span>Em relação à média</span>
+          <strong id="recommendationAverage">—</strong>
+        </div>
+        <div>
+          <span>Tendência recente</span>
+          <strong id="recommendationTrend">—</strong>
+        </div>
+        <div>
+          <span>Raridade</span>
+          <strong id="recommendationRarity">—</strong>
+        </div>
+      </div>
+      <h3>Por que?</h3>
+      <ul id="recommendationReasons" class="score-reasons"></ul>
+      <p id="recommendationDataUsed" class="muted"></p>
+      <p id="recommendationDisclaimer" class="recommendation-disclaimer"></p>
+    </article>
+
     <div class="stats-grid">
       <article><span>Preço atual</span><strong id="statCurrent">—</strong></article>
       <article><span>Menor preço</span><strong id="statMinimum">—</strong></article>

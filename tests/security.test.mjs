@@ -33,10 +33,11 @@ test("uses a restrictive CSP without unsafe-inline", async () => {
 });
 
 test("sends authenticated requests only to the fixed GitHub API repository", async () => {
-  const [app, history, score] = await Promise.all([
+  const [app, history, score, recommendation] = await Promise.all([
     read("app.js"),
     read("history.mjs"),
     read("score.mjs"),
+    read("recommendation.mjs"),
   ]);
 
   assert.match(app, /const OWNER = "tiagoirber"/);
@@ -50,6 +51,10 @@ test("sends authenticated requests only to the fixed GitHub API repository", asy
   assert.match(history, /url\.protocol !== "https:"/);
   assert.doesNotMatch(history, /fetch\s*\(/);
   assert.doesNotMatch(score, /fetch\s*\(|localStorage|sessionStorage/);
+  assert.doesNotMatch(
+    recommendation,
+    /fetch\s*\(|localStorage|sessionStorage/
+  );
 });
 
 test("uses no third-party chart scripts or unsafe SVG markup", async () => {

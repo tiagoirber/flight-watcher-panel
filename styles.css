@@ -181,6 +181,76 @@ button:disabled {
   border-color: #999;
 }
 
+.recommendation-card {
+  background: #f8f8f8;
+  border: 2px solid #bbb;
+  border-radius: 8px;
+  margin: 1rem 0;
+  padding: 1rem;
+}
+
+.recommendation-header {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 2fr 1fr;
+}
+
+.recommendation-headline {
+  display: block;
+  font-size: 1.25rem;
+}
+
+.recommendation-signals {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 1rem 0;
+}
+
+.recommendation-signals div {
+  background: rgb(255 255 255 / 65%);
+  border-radius: 6px;
+  padding: 0.65rem;
+}
+
+.recommendation-signals span,
+.recommendation-signals strong {
+  display: block;
+}
+
+.recommendation-signals span {
+  color: #666;
+  font-size: 0.75rem;
+  margin-bottom: 0.3rem;
+}
+
+.recommendation-signals strong {
+  font-size: 0.85rem;
+}
+
+.recommendation-buy {
+  background: #edf8ed;
+  border-color: #37833b;
+}
+
+.recommendation-wait {
+  background: #fff8db;
+  border-color: #d8a900;
+}
+
+.recommendation-insufficient {
+  background: #f5f5f5;
+  border-color: #999;
+}
+
+.recommendation-disclaimer {
+  border-top: 1px solid rgb(0 0 0 / 15%);
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 0;
+  padding-top: 0.75rem;
+}
+
 .chart-container,
 .table-container {
   max-width: 100%;
@@ -298,6 +368,11 @@ tbody tr:hover {
   }
 
   .score-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .recommendation-header,
+  .recommendation-signals {
     grid-template-columns: 1fr;
   }
 }
