@@ -15,6 +15,7 @@ import {
 } from "./history.mjs";
 import { calculateFlightScore } from "./score.mjs";
 import { calculateRecommendation } from "./recommendation.mjs";
+import { buildDashboard, parseScheduleInterval } from "./dashboard.mjs";
 
 const OWNER = "tiagoirber";
 const REPO = "flight-watcher";
@@ -24,6 +25,7 @@ const API = `https://api.github.com/repos/${OWNER}/${REPO}`;
 let sessionToken = "";
 let historyRecords = [];
 let historyLoadVersion = 0;
+let scheduleIntervalMinutes = null;
 
 const tokenInput = document.getElementById("token");
 const tokenStatus = document.getElementById("tokenStatus");
@@ -64,6 +66,41 @@ const recommendationDataUsed = document.getElementById("recommendationDataUsed")
 const recommendationDisclaimer = document.getElementById(
   "recommendationDisclaimer"
 );
+const dashboardPeriod = document.getElementById("dashboardPeriod");
+const systemHealthCard = document.getElementById("systemHealthCard");
+const systemHealthLabel = document.getElementById("systemHealthLabel");
+const systemHealthReason = document.getElementById("systemHealthReason");
+const lastExecution = document.getElementById("lastExecution");
+const nextExecution = document.getElementById("nextExecution");
+const promotionTable = document.getElementById("promotionTable");
+const promotionTableBody = document.getElementById("promotionTableBody");
+const promotionEmpty = document.getElementById("promotionEmpty");
+const lowestPricesList = document.getElementById("lowestPricesList");
+const lowestPricesEmpty = document.getElementById("lowestPricesEmpty");
+const largestDropsList = document.getElementById("largestDropsList");
+const largestDropsEmpty = document.getElementById("largestDropsEmpty");
+const largestRisesList = document.getElementById("largestRisesList");
+const largestRisesEmpty = document.getElementById("largestRisesEmpty");
+const destinationAverageList = document.getElementById(
+  "destinationAverageList"
+);
+const destinationAverageEmpty = document.getElementById(
+  "destinationAverageEmpty"
+);
+const carrierAverageList = document.getElementById("carrierAverageList");
+const carrierAverageEmpty = document.getElementById("carrierAverageEmpty");
+const monthAverageList = document.getElementById("monthAverageList");
+const monthAverageEmpty = document.getElementById("monthAverageEmpty");
+const monitoredRoutesTable = document.getElementById("monitoredRoutesTable");
+const monitoredRoutesBody = document.getElementById("monitoredRoutesBody");
+const monitoredRoutesEmpty = document.getElementById("monitoredRoutesEmpty");
+const alertsEmpty = document.getElementById("alertsEmpty");
+const alertsTable = document.getElementById("alertsTable");
+const alertsTableBody = document.getElementById("alertsTableBody");
+const failureSummary = document.getElementById("failureSummary");
+const failuresEmpty = document.getElementById("failuresEmpty");
+const failuresTable = document.getElementById("failuresTable");
+const failuresTableBody = document.getElementById("failuresTableBody");
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -74,6 +111,11 @@ const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
   dateStyle: "short",
   timeStyle: "short",
   timeZone: "America/Sao_Paulo",
+});
+const monthFormatter = new Intl.DateTimeFormat("pt-BR", {
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
 });
 
 function eraseLegacyStoredToken() {
@@ -222,6 +264,7 @@ function showHistoryStatus(message, ok = true) {
 function clearHistory() {
   historyLoadVersion += 1;
   historyRecords = [];
+  scheduleIntervalMinutes = null;
   historyMonitor.replaceChildren();
   historyContent.hidden = true;
   historyStatus.textContent = "";
@@ -229,6 +272,16 @@ function clearHistory() {
   priceChart.replaceChildren();
   carrierTableBody.replaceChildren();
   historyTableBody.replaceChildren();
+  promotionTableBody.replaceChildren();
+  lowestPricesList.replaceChildren();
+  largestDropsList.replaceChildren();
+  largestRisesList.replaceChildren();
+  destinationAverageList.replaceChildren();
+  carrierAverageList.replaceChildren();
+  monthAverageList.replaceChildren();
+  monitoredRoutesBody.replaceChildren();
+  alertsTableBody.replaceChildren();
+  failuresTableBody.replaceChildren();
   loadHistoryButton.disabled = false;
 }
 
@@ -389,6 +442,195 @@ function appendCell(row, text) {
   return cell;
 }
 
+function routeText(item) {
+  return `${String(item.origin ?? "?")} → ${String(item.destination ?? "?")} (${String(
+    item.monitorId ?? item.monitor_id ?? "sem-id"
+  )})`;
+}
+
+function formatPercent(value) {
+  if (!Number.isFinite(value)) return "—";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(1)}%`;
+}
+
+function formatMonth(value) {
+  const date = new Date(`${value}-01T00:00:00Z`);
+  return Number.isFinite(date.getTime()) ? monthFormatter.format(date) : value;
+}
+
+function renderTextList(element, values) {
+  const items = values.map((value) => {
+    const item = document.createElement("li");
+    item.textContent = value;
+    return item;
+  });
+  element.replaceChildren(...items);
+}
+
+function renderDashboard() {
+  const result = buildDashboard(historyRecords, {
+    period: dashboardPeriod.value,
+    now: Date.now(),
+    intervalMinutes: scheduleIntervalMinutes,
+  });
+  setText(
+    "dashboardSample",
+    `${result.sample.queries} consultas, ${result.sample.prices} preços e ${result.sample.monitors} rotas no período.`
+  );
+  setText("dashboardQueries", String(result.sample.queries));
+  setText("dashboardPrices", String(result.sample.prices));
+  setText("dashboardRoutes", String(result.sample.monitors));
+  setText("dashboardFailures", String(result.failedQueries.length));
+
+  const { health, lastExecution: latestRun, nextExecution: expectedRun } =
+    result.system;
+  systemHealthCard.className = `health-card health-${health.level}`;
+  systemHealthLabel.textContent = health.label;
+  systemHealthReason.textContent = health.reason;
+  systemHealthCard.setAttribute("aria-label", `${health.label}. ${health.reason}`);
+  lastExecution.textContent = latestRun
+    ? `${dateFormatter.format(new Date(latestRun.completedAt))} — ${latestRun.successes}/${latestRun.queries} sucessos`
+    : "Nenhuma execução operacional registrada.";
+  nextExecution.textContent = expectedRun
+    ? `${dateFormatter.format(new Date(expectedRun))} — estimativa do cron`
+    : "Cron compatível não disponível.";
+
+  const promotionRows = result.promotionRanking.map((item) => {
+    const row = document.createElement("tr");
+    appendCell(row, String(item.rank));
+    appendCell(row, routeText(item));
+    const recommendationCell = appendCell(row, item.recommendation);
+    recommendationCell.className = `promotion-${item.action}`;
+    appendCell(
+      row,
+      item.score === null ? `— / ${item.confidence}%` : `${item.score}/100 — ${item.confidence}%`
+    );
+    appendCell(row, formatCurrency(item.current));
+    appendCell(row, formatPercent(item.differenceFromMeanPercent));
+    return row;
+  });
+  promotionTableBody.replaceChildren(...promotionRows);
+  promotionTable.hidden = result.promotionRanking.length === 0;
+  promotionEmpty.textContent = result.promotionRanking.length
+    ? ""
+    : "Nenhuma rota observada no período.";
+
+  renderTextList(
+    lowestPricesList,
+    result.lowestPrices.map(
+      (item) => `${routeText(item)}: ${formatCurrency(item.minimum)} em ${dateFormatter.format(
+        new Date(item.minimumObservedAt)
+      )}`
+    )
+  );
+  lowestPricesEmpty.textContent = result.lowestPrices.length
+    ? ""
+    : "Nenhum preço válido no período.";
+  renderTextList(
+    largestDropsList,
+    result.largestDrops.map(
+      (item) => `${routeText(item)}: ${formatPercent(item.movementPercent)} (${formatCurrency(
+        item.previous
+      )} → ${formatCurrency(item.current)})`
+    )
+  );
+  largestDropsEmpty.textContent = result.largestDrops.length
+    ? ""
+    : "Nenhuma queda com dois preços válidos no período.";
+  renderTextList(
+    largestRisesList,
+    result.largestRises.map(
+      (item) => `${routeText(item)}: ${formatPercent(item.movementPercent)} (${formatCurrency(
+        item.previous
+      )} → ${formatCurrency(item.current)})`
+    )
+  );
+  largestRisesEmpty.textContent = result.largestRises.length
+    ? ""
+    : "Nenhuma alta com dois preços válidos no período.";
+
+  renderTextList(
+    destinationAverageList,
+    result.destinationAverages.map(
+      (item) => `${item.destination}: ${formatCurrency(item.mean)} (${item.prices} preços; mínimo ${formatCurrency(
+        item.minimum
+      )})`
+    )
+  );
+  destinationAverageEmpty.textContent = result.destinationAverages.length
+    ? ""
+    : "Nenhum preço válido para calcular médias por destino.";
+  renderTextList(
+    carrierAverageList,
+    result.carrierAverages.map(
+      (item) => `${item.carrier}: ${formatCurrency(item.mean)} (${item.prices} preços; mínimo ${formatCurrency(
+        item.minimum
+      )})`
+    )
+  );
+  carrierAverageEmpty.textContent = result.carrierAverages.length
+    ? ""
+    : "Dados de companhia ainda não estão disponíveis no histórico.";
+  renderTextList(
+    monthAverageList,
+    result.monthlyAverages.map(
+      (item) => `${formatMonth(item.month)}: ${formatCurrency(item.mean)} (${item.prices} preços)`
+    )
+  );
+  monthAverageEmpty.textContent = result.monthlyAverages.length
+    ? ""
+    : "Nenhum preço válido para calcular médias mensais.";
+
+  const monitoredRows = result.monitoredRoutes.map((item) => {
+    const row = document.createElement("tr");
+    appendCell(row, routeText(item));
+    appendCell(row, String(item.queries));
+    appendCell(row, String(item.prices));
+    appendCell(row, String(item.failures));
+    return row;
+  });
+  monitoredRoutesBody.replaceChildren(...monitoredRows);
+  monitoredRoutesTable.hidden = result.monitoredRoutes.length === 0;
+  monitoredRoutesEmpty.textContent = result.monitoredRoutes.length
+    ? ""
+    : "Nenhuma rota observada no período.";
+
+  const alertRows = result.alerts.slice(0, 50).map((item) => {
+    const row = document.createElement("tr");
+    appendCell(row, dateFormatter.format(new Date(item.observed_at)));
+    appendCell(row, routeText(item));
+    appendCell(row, formatCurrency(item.price));
+    appendCell(row, item.outcome === "sent" ? "Enviado" : "Falhou");
+    return row;
+  });
+  alertsTableBody.replaceChildren(...alertRows);
+  alertsTable.hidden = result.alerts.length === 0;
+  alertsEmpty.textContent = result.alerts.length
+    ? `${result.alerts.length} alertas no período; exibindo até 50.`
+    : "Nenhum alerta no período.";
+
+  const failureRows = result.failedQueries.slice(0, 50).map((item) => {
+    const row = document.createElement("tr");
+    appendCell(row, dateFormatter.format(new Date(item.observed_at)));
+    appendCell(row, routeText(item));
+    appendCell(row, item.status);
+    appendCell(row, String(item.error_code ?? "sem-código"));
+    return row;
+  });
+  failuresTableBody.replaceChildren(...failureRows);
+  failuresTable.hidden = result.failedQueries.length === 0;
+  failuresEmpty.textContent = result.failedQueries.length
+    ? ""
+    : "Nenhuma consulta com falha no período.";
+  failureSummary.textContent = result.failureCodes.length
+    ? `${result.failedQueries.length} falhas no período; exibindo até 50. ` +
+      result.failureCodes
+        .map((item) => `${item.errorCode}: ${item.queries}`)
+        .join("; ")
+    : "";
+}
+
 function renderCarrierComparison(records) {
   const comparisons = compareCarriers(records);
   carrierTableBody.replaceChildren();
@@ -490,6 +732,7 @@ function renderHistory() {
     return;
   }
 
+  renderDashboard();
   const records = filterHistory(
     historyRecords,
     monitorId,
@@ -528,6 +771,17 @@ function renderHistory() {
   );
 }
 
+async function loadScheduleInterval() {
+  try {
+    const workflowText = await loadRepositoryText(
+      ".github/workflows/monitor.yml"
+    );
+    return parseScheduleInterval(workflowText);
+  } catch {
+    return null;
+  }
+}
+
 async function loadHistory() {
   const version = ++historyLoadVersion;
   loadHistoryButton.disabled = true;
@@ -537,10 +791,14 @@ async function loadHistory() {
       "data/history/v1/manifest.json"
     );
     const manifest = validateManifest(JSON.parse(manifestText));
-    const segments = await loadPartitions(manifest.partitions);
+    const [segments, intervalMinutes] = await Promise.all([
+      loadPartitions(manifest.partitions),
+      loadScheduleInterval(),
+    ]);
     if (version !== historyLoadVersion) return;
 
     historyRecords = mergeHistorySegments(segments);
+    scheduleIntervalMinutes = intervalMinutes;
     populateHistoryMonitors(historyRecords);
     renderHistory();
   } catch (error) {
@@ -620,6 +878,9 @@ document.getElementById("loadFlightsButton").addEventListener("click", loadFligh
 loadHistoryButton.addEventListener("click", loadHistory);
 historyMonitor.addEventListener("change", renderHistory);
 historyPeriod.addEventListener("change", renderHistory);
+dashboardPeriod.addEventListener("change", () => {
+  if (historyRecords.length) renderDashboard();
+});
 document.getElementById("flightForm").addEventListener("submit", (event) => {
   event.preventDefault();
   addFlight();

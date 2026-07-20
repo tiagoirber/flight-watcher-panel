@@ -75,6 +75,156 @@
   <div id="historyStatus" class="muted" aria-live="polite"></div>
 
   <section id="historyContent" hidden aria-label="Análise do histórico">
+    <section id="dashboardSection" aria-labelledby="dashboardHeading">
+      <div class="dashboard-heading">
+        <div>
+          <h3 id="dashboardHeading">Dashboard estatístico geral</h3>
+          <p id="dashboardSample" class="muted"></p>
+        </div>
+        <div>
+          <label for="dashboardPeriod">Período do dashboard</label>
+          <select id="dashboardPeriod">
+            <option value="7">Últimos 7 dias</option>
+            <option value="30">Últimos 30 dias</option>
+            <option value="90">Últimos 90 dias</option>
+            <option value="all" selected>Todo o histórico</option>
+          </select>
+        </div>
+      </div>
+
+      <article
+        id="systemHealthCard"
+        class="health-card health-unknown"
+        aria-live="polite"
+      >
+        <div>
+          <span class="score-label">Saúde do sistema</span>
+          <strong id="systemHealthLabel">Saúde desconhecida</strong>
+          <p id="systemHealthReason" class="muted"></p>
+        </div>
+        <div class="health-times">
+          <div>
+            <span>Última execução</span>
+            <strong id="lastExecution">—</strong>
+          </div>
+          <div>
+            <span>Próxima execução prevista</span>
+            <strong id="nextExecution">—</strong>
+          </div>
+        </div>
+      </article>
+
+      <div class="stats-grid dashboard-summary-grid">
+        <article><span>Consultas</span><strong id="dashboardQueries">—</strong></article>
+        <article><span>Preços válidos</span><strong id="dashboardPrices">—</strong></article>
+        <article><span>Rotas</span><strong id="dashboardRoutes">—</strong></article>
+        <article><span>Consultas com falha</span><strong id="dashboardFailures">—</strong></article>
+      </div>
+
+      <h4>Ranking de promoções</h4>
+      <p class="muted">
+        Ordena recomendação, Flight Score, confiança e distância da média. Não é previsão.
+      </p>
+      <p id="promotionEmpty" class="muted"></p>
+      <div class="table-container">
+        <table id="promotionTable">
+          <thead>
+            <tr>
+              <th>Posição</th>
+              <th>Rota</th>
+              <th>Recomendação</th>
+              <th>Score / confiança</th>
+              <th>Preço atual</th>
+              <th>Vs. média</th>
+            </tr>
+          </thead>
+          <tbody id="promotionTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="dashboard-grid">
+        <article>
+          <h4>Menores preços</h4>
+          <ol id="lowestPricesList" class="dashboard-list"></ol>
+          <p id="lowestPricesEmpty" class="muted"></p>
+        </article>
+        <article>
+          <h4>Maiores quedas</h4>
+          <ol id="largestDropsList" class="dashboard-list"></ol>
+          <p id="largestDropsEmpty" class="muted"></p>
+        </article>
+        <article>
+          <h4>Maiores altas</h4>
+          <ol id="largestRisesList" class="dashboard-list"></ol>
+          <p id="largestRisesEmpty" class="muted"></p>
+        </article>
+      </div>
+
+      <div class="dashboard-grid">
+        <article>
+          <h4>Média por destino</h4>
+          <ul id="destinationAverageList" class="dashboard-list"></ul>
+          <p id="destinationAverageEmpty" class="muted"></p>
+        </article>
+        <article>
+          <h4>Média por companhia</h4>
+          <ul id="carrierAverageList" class="dashboard-list"></ul>
+          <p id="carrierAverageEmpty" class="muted"></p>
+        </article>
+        <article>
+          <h4>Média por mês observado</h4>
+          <ul id="monthAverageList" class="dashboard-list"></ul>
+          <p id="monthAverageEmpty" class="muted"></p>
+        </article>
+      </div>
+
+      <h4>Rotas mais monitoradas</h4>
+      <p id="monitoredRoutesEmpty" class="muted"></p>
+      <div class="table-container">
+        <table id="monitoredRoutesTable">
+          <thead>
+            <tr>
+              <th>Rota</th>
+              <th>Consultas</th>
+              <th>Preços</th>
+              <th>Falhas</th>
+            </tr>
+          </thead>
+          <tbody id="monitoredRoutesBody"></tbody>
+        </table>
+      </div>
+
+      <div class="dashboard-grid dashboard-events-grid">
+        <article>
+          <h4>Histórico de alertas</h4>
+          <p id="alertsEmpty" class="muted"></p>
+          <div class="table-container">
+            <table id="alertsTable" hidden>
+              <thead>
+                <tr><th>Data</th><th>Rota</th><th>Preço</th><th>Resultado</th></tr>
+              </thead>
+              <tbody id="alertsTableBody"></tbody>
+            </table>
+          </div>
+        </article>
+        <article>
+          <h4>Consultas com falha</h4>
+          <p id="failureSummary" class="muted"></p>
+          <p id="failuresEmpty" class="muted"></p>
+          <div class="table-container">
+            <table id="failuresTable" hidden>
+              <thead>
+                <tr><th>Data</th><th>Rota</th><th>Status</th><th>Código</th></tr>
+              </thead>
+              <tbody id="failuresTableBody"></tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <hr class="section-divider">
+    <h3 id="routeAnalysisHeading">Análise da rota selecionada</h3>
     <p id="historySampleNotice" class="notice" aria-live="polite"></p>
 
     <article

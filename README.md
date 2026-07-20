@@ -60,6 +60,31 @@ posição entre os 10% menores e distância de até 5% do mínimo. A tendência 
 os últimos cinco preços: queda até -2%, alta a partir de 2% e estabilidade no
 intervalo intermediário.
 
+## Dashboard estatístico
+
+O dashboard geral agrega todas as rotas no período próprio selecionado e exibe:
+
+- ranking de promoções com as regras já usadas pelo Flight Score e recomendação;
+- menores preços e maiores quedas ou altas entre os dois preços mais recentes;
+- histórico de alertas e consultas com falha;
+- médias por destino, companhia e mês da observação;
+- rotas mais monitoradas;
+- saúde, última execução e próxima execução prevista.
+
+Registros migrados continuam nas estatísticas de preços, mas não contam como
+execuções operacionais. A saúde usa a execução real mais recente: sem falhas é
+saudável, com falha parcial requer atenção e sem sucesso ou com atraso superior
+a três intervalos é crítica.
+
+O intervalo é lido do cron `*/N * * * *` em `.github/workflows/monitor.yml`. A
+próxima execução é uma estimativa do agendador e pode sofrer atraso no GitHub
+Actions. Se o cron não puder ser lido, o histórico continua funcional e a
+estimativa fica indisponível.
+
+As médias sempre mostram o tamanho da amostra. Enquanto `carrier` não estiver
+presente nas observações, a média por companhia exibe um estado indisponível em
+vez de inferir ou inventar a empresa.
+
 ## Segurança do token
 
 O token do GitHub permanece somente na memória da aba. Ele não é salvo em
@@ -76,7 +101,7 @@ Permissões mínimas do fine-grained PAT:
 Não há dependências npm. Execute com Node 22 ou superior:
 
 ```text
-node --test tests/validation.test.mjs tests/security.test.mjs tests/history.test.mjs tests/score.test.mjs tests/recommendation.test.mjs
+node --test tests/validation.test.mjs tests/security.test.mjs tests/history.test.mjs tests/score.test.mjs tests/recommendation.test.mjs tests/dashboard.test.mjs
 ```
 
 Os testes não acessam a API do GitHub e não modificam o repositório principal.
