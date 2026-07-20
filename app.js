@@ -13,6 +13,7 @@ import {
   safeResultUrl,
   validateManifest,
 } from "./history.mjs";
+import { calculateFlightScore } from "./score.mjs";
 
 const OWNER = "tiagoirber";
 const REPO = "flight-watcher";
@@ -39,6 +40,15 @@ const carrierEmpty = document.getElementById("carrierEmpty");
 const carrierTable = document.getElementById("carrierTable");
 const carrierTableBody = document.getElementById("carrierTableBody");
 const historyTableBody = document.getElementById("historyTableBody");
+const flightScoreCard = document.getElementById("flightScoreCard");
+const flightScoreValue = document.getElementById("flightScoreValue");
+const flightScoreClassification = document.getElementById(
+  "flightScoreClassification"
+);
+const flightScoreConfidence = document.getElementById("flightScoreConfidence");
+const flightScoreJustifications = document.getElementById(
+  "flightScoreJustifications"
+);
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -411,6 +421,27 @@ function renderHistoryTable(records) {
   historyTableBody.replaceChildren(...rows);
 }
 
+function renderFlightScore(records) {
+  const result = calculateFlightScore(records);
+  flightScoreCard.className = `score-card score-${result.band}`;
+  flightScoreValue.textContent =
+    result.score === null ? "—" : `${result.score}/100`;
+  flightScoreClassification.textContent = result.classification;
+  flightScoreConfidence.textContent = `${result.confidence}% — ${result.confidenceLabel}`;
+  const reasons = result.justifications.map((justification) => {
+    const item = document.createElement("li");
+    item.textContent = justification;
+    return item;
+  });
+  flightScoreJustifications.replaceChildren(...reasons);
+  flightScoreCard.setAttribute(
+    "aria-label",
+    result.score === null
+      ? "Flight Score indisponível por dados insuficientes"
+      : `Flight Score ${result.score} de 100, ${result.classification}, confiança ${result.confidenceLabel}`
+  );
+}
+
 function renderHistory() {
   const monitorId = historyMonitor.value;
   if (!monitorId) {
@@ -425,6 +456,7 @@ function renderHistory() {
     historyPeriod.value
   );
   const statistics = calculateStatistics(records);
+  renderFlightScore(records);
   setText("statCurrent", formatCurrency(statistics.current));
   setText("statMinimum", formatCurrency(statistics.minimum));
   setText("statMaximum", formatCurrency(statistics.maximum));

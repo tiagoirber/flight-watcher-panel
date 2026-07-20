@@ -76,6 +76,32 @@
 
   <section id="historyContent" hidden aria-label="Análise do histórico">
     <p id="historySampleNotice" class="notice" aria-live="polite"></p>
+
+    <article
+      id="flightScoreCard"
+      class="score-card score-insufficient"
+      aria-live="polite"
+    >
+      <div class="score-summary">
+        <div>
+          <span class="score-label">Flight Score histórico</span>
+          <strong id="flightScoreValue" class="score-value">—</strong>
+          <span id="flightScoreClassification" class="score-classification">
+            dados insuficientes
+          </span>
+        </div>
+        <div>
+          <span class="score-label">Confiança da amostra</span>
+          <strong id="flightScoreConfidence">—</strong>
+        </div>
+      </div>
+      <p class="muted">
+        Mede a atratividade do preço dentro do histórico selecionado. Não é
+        previsão nem garantia de economia.
+      </p>
+      <ul id="flightScoreJustifications" class="score-reasons"></ul>
+    </article>
+
     <div class="stats-grid">
       <article><span>Preço atual</span><strong id="statCurrent">—</strong></article>
       <article><span>Menor preço</span><strong id="statMinimum">—</strong></article>

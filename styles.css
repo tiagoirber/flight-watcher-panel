@@ -105,6 +105,82 @@ button:disabled {
   display: none;
 }
 
+.score-card {
+  background: #f8f8f8;
+  border: 2px solid #bbb;
+  border-radius: 8px;
+  margin: 1rem 0;
+  padding: 1rem;
+}
+
+.score-summary {
+  align-items: start;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 2fr 1fr;
+}
+
+.score-label,
+.score-classification {
+  display: block;
+}
+
+.score-label {
+  color: #666;
+  font-size: 0.75rem;
+  margin-bottom: 0.2rem;
+}
+
+.score-value {
+  display: inline-block;
+  font-size: 2rem;
+  line-height: 1;
+  margin-right: 0.5rem;
+}
+
+.score-classification {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-top: 0.3rem;
+  text-transform: uppercase;
+}
+
+.score-reasons {
+  font-size: 0.85rem;
+  margin-bottom: 0;
+  padding-left: 1.25rem;
+}
+
+.score-reasons li {
+  margin-top: 0.3rem;
+}
+
+.score-excellent,
+.score-very-good {
+  background: #edf8ed;
+  border-color: #37833b;
+}
+
+.score-good {
+  background: #eef6ff;
+  border-color: #1769aa;
+}
+
+.score-weak {
+  background: #fff8db;
+  border-color: #d8a900;
+}
+
+.score-avoid {
+  background: #fce8e8;
+  border-color: #b52b2b;
+}
+
+.score-insufficient {
+  background: #f5f5f5;
+  border-color: #999;
+}
+
 .chart-container,
 .table-container {
   max-width: 100%;
@@ -219,5 +295,9 @@ tbody tr:hover {
 
   .stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .score-summary {
+    grid-template-columns: 1fr;
   }
 }
