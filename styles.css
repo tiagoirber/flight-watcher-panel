@@ -2,7 +2,7 @@ body {
   color: #1a1a1a;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   margin: 2rem auto;
-  max-width: 720px;
+  max-width: 960px;
   padding: 0 1rem;
 }
 
@@ -15,6 +15,11 @@ h2 {
   font-size: 1.1rem;
   margin-top: 2rem;
   padding-bottom: 0.3rem;
+}
+
+h3 {
+  font-size: 1rem;
+  margin-top: 1.5rem;
 }
 
 label {
@@ -38,6 +43,11 @@ button {
   padding: 0.5rem 1rem;
 }
 
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .row {
   display: flex;
   gap: 0.5rem;
@@ -45,6 +55,114 @@ button {
 
 .row > div {
   flex: 1;
+}
+
+.history-controls {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0.5rem 0 1rem;
+}
+
+.stats-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 1rem 0;
+}
+
+.stats-grid article {
+  background: #f6f6f6;
+  border: 1px solid #e4e4e4;
+  border-radius: 6px;
+  padding: 0.75rem;
+}
+
+.stats-grid span,
+.stats-grid strong {
+  display: block;
+}
+
+.stats-grid span {
+  color: #666;
+  font-size: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.stats-grid strong {
+  font-size: 1rem;
+}
+
+.notice {
+  background: #fff8db;
+  border-left: 4px solid #d8a900;
+  color: #654f00;
+  font-size: 0.85rem;
+  padding: 0.6rem;
+}
+
+.notice:empty {
+  display: none;
+}
+
+.chart-container,
+.table-container {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+#priceChart {
+  background: #fafafa;
+  border: 1px solid #e4e4e4;
+  min-height: 220px;
+  width: 100%;
+}
+
+.chart-axis {
+  stroke: #aaa;
+  stroke-width: 1;
+}
+
+.chart-line {
+  fill: none;
+  stroke: #1769aa;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+
+.chart-point {
+  fill: #1769aa;
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+.chart-label {
+  fill: #555;
+  font-size: 11px;
+}
+
+table {
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  min-width: 680px;
+  width: 100%;
+}
+
+th,
+td {
+  border-bottom: 1px solid #ddd;
+  padding: 0.55rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background: #f1f1f1;
+}
+
+tbody tr:hover {
+  background: #f8fbff;
 }
 
 .credential-username {
@@ -93,5 +211,13 @@ button {
 @media (max-width: 520px) {
   .row {
     display: block;
+  }
+
+  .history-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

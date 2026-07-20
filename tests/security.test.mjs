@@ -33,10 +33,27 @@ test("uses a restrictive CSP without unsafe-inline", async () => {
 });
 
 test("sends authenticated requests only to the fixed GitHub API repository", async () => {
-  const app = await read("app.js");
+  const [app, history] = await Promise.all([
+    read("app.js"),
+    read("history.mjs"),
+  ]);
 
   assert.match(app, /const OWNER = "tiagoirber"/);
   assert.match(app, /const REPO = "flight-watcher"/);
   assert.match(app, /https:\/\/api\.github\.com\/repos/);
-  assert.doesNotMatch(app, /https?:\/\/(?!api\.github\.com)/);
+  assert.doesNotMatch(
+    app,
+    /https?:\/\/(?!(?:api\.github\.com|www\.w3\.org\/2000\/svg))/
+  );
+  assert.match(app, /data\/history\/v1\/manifest\.json/);
+  assert.match(history, /url\.protocol !== "https:"/);
+  assert.doesNotMatch(history, /fetch\s*\(/);
+});
+
+test("uses no third-party chart scripts or unsafe SVG markup", async () => {
+  const [app, index] = await Promise.all([read("app.js"), read("index.html")]);
+
+  assert.match(app, /createElementNS\("http:\/\/www\.w3\.org\/2000\/svg"/);
+  assert.doesNotMatch(app, /\.innerHTML\b|insertAdjacentHTML|document\.write/);
+  assert.doesNotMatch(index, /<script[^>]+src=["']https?:\/\//i);
 });
