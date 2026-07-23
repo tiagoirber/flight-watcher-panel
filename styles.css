@@ -112,6 +112,45 @@ legend {
   margin: 0.5rem 0 1rem;
 }
 
+.intelligence-section {
+  background: #f7f9ff;
+  border: 1px solid #ccd8f2;
+  border-radius: 8px;
+  margin: 1rem 0;
+  padding: 1rem;
+}
+
+.intelligence-section h3 {
+  margin-top: 0;
+}
+
+.intelligence-actions {
+  align-items: end;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.intelligence-actions button {
+  margin-bottom: 0;
+}
+
+.intelligence-answer {
+  background: #fff;
+  border: 1px solid #dce3f3;
+  border-radius: 8px;
+  margin-top: 1rem;
+  padding: 1rem;
+}
+
+.intelligence-answer > h4:first-child {
+  margin-top: 0;
+}
+
+.intelligence-metadata strong {
+  overflow-wrap: anywhere;
+}
+
 .stats-grid {
   display: grid;
   gap: 0.75rem;
@@ -528,6 +567,10 @@ tbody tr:hover {
   }
 
   .history-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .intelligence-actions {
     grid-template-columns: 1fr;
   }
 

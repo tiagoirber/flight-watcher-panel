@@ -33,13 +33,14 @@ test("uses a restrictive CSP without unsafe-inline", async () => {
 });
 
 test("sends authenticated requests only to the fixed GitHub API repository", async () => {
-  const [app, history, score, recommendation, dashboard, flexible] = await Promise.all([
+  const [app, history, score, recommendation, dashboard, flexible, intelligence] = await Promise.all([
     read("app.js"),
     read("history.mjs"),
     read("score.mjs"),
     read("recommendation.mjs"),
     read("dashboard.mjs"),
     read("flexible-search.mjs"),
+    read("intelligence.mjs"),
   ]);
 
   assert.match(app, /const OWNER = "tiagoirber"/);
@@ -60,6 +61,21 @@ test("sends authenticated requests only to the fixed GitHub API repository", asy
   );
   assert.doesNotMatch(dashboard, /fetch\s*\(|localStorage|sessionStorage/);
   assert.doesNotMatch(flexible, /fetch\s*\(|localStorage|sessionStorage/);
+  assert.doesNotMatch(
+    intelligence,
+    /fetch\s*\(|localStorage|sessionStorage|githubFetch|dispatch\s*\(/
+  );
+});
+
+test("intelligence is deterministic and declares no external AI service", async () => {
+  const intelligence = await read("intelligence.mjs");
+
+  assert.match(intelligence, /externalSources:\s*false/);
+  assert.match(intelligence, /não prevê preços futuros/);
+  assert.doesNotMatch(
+    intelligence,
+    /api\.openai|anthropic|gemini|chatgpt|XMLHttpRequest|WebSocket/
+  );
 });
 
 test("uses no third-party chart scripts or unsafe SVG markup", async () => {

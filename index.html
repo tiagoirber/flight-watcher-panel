@@ -74,6 +74,69 @@
   </div>
   <div id="historyStatus" class="muted" aria-live="polite"></div>
 
+  <section id="intelligenceSection" class="intelligence-section">
+    <h3>Assistente de dados</h3>
+    <p class="muted">
+      Responde somente com o histórico carregado. Não consulta fontes externas,
+      não prevê preços e não altera monitoramentos.
+    </p>
+    <form id="intelligenceForm">
+      <label for="intelligenceQuestion">Pergunta</label>
+      <input
+        id="intelligenceQuestion"
+        list="intelligenceExamples"
+        maxlength="500"
+        placeholder="Ex.: Qual rota caiu mais?"
+        autocomplete="off"
+      >
+      <datalist id="intelligenceExamples">
+        <option value="Qual rota caiu mais?"></option>
+        <option value="Qual destino está mais barato?"></option>
+        <option value="Quais promoções apareceram hoje?"></option>
+        <option value="Quais preços estão abaixo da média?"></option>
+        <option value="Qual rota apresenta o melhor Flight Score?"></option>
+        <option value="Quais rotas têm dados insuficientes?"></option>
+      </datalist>
+      <div class="intelligence-actions">
+        <div>
+          <label for="intelligencePeriod">Período de referência</label>
+          <select id="intelligencePeriod">
+            <option value="7">Últimos 7 dias</option>
+            <option value="30">Últimos 30 dias</option>
+            <option value="90">Últimos 90 dias</option>
+            <option value="all" selected>Todo o histórico</option>
+          </select>
+        </div>
+        <button type="submit" id="intelligenceAskButton" disabled>
+          Analisar histórico
+        </button>
+      </div>
+    </form>
+    <div id="intelligenceStatus" class="muted" aria-live="polite">
+      Carregue o histórico para fazer uma pergunta.
+    </div>
+    <article
+      id="intelligenceAnswer"
+      class="intelligence-answer"
+      aria-live="polite"
+      hidden
+    >
+      <h4 id="intelligenceHeadline"></h4>
+      <p id="intelligenceText"></p>
+      <div class="stats-grid intelligence-metadata">
+        <article><span>Período</span><strong id="intelligencePeriodResult">—</strong></article>
+        <article><span>Amostra</span><strong id="intelligenceSample">—</strong></article>
+        <article><span>Fonte</span><strong id="intelligenceSource">—</strong></article>
+        <article><span>Confiança</span><strong id="intelligenceConfidence">—</strong></article>
+      </div>
+      <p id="intelligenceConfidenceBasis" class="muted"></p>
+      <h4>Fatos usados</h4>
+      <ul id="intelligenceFacts" class="dashboard-list"></ul>
+      <h4>Limitações</h4>
+      <ul id="intelligenceLimitations" class="score-reasons"></ul>
+    </article>
+  </section>
+
   <section id="historyContent" hidden aria-label="Análise do histórico">
     <section id="dashboardSection" aria-labelledby="dashboardHeading">
       <div class="dashboard-heading">

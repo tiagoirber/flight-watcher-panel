@@ -31,6 +31,27 @@ O painel também permite pausar, retomar e remover monitoramentos. No histórico
 consultas concretas de uma busca flexível exibem o identificador do grupo sem
 misturar séries de rotas e datas diferentes.
 
+## Assistente de dados
+
+O assistente responde a um conjunto explícito de perguntas usando somente o
+histórico v1 já carregado:
+
+- rota com maior queda recente;
+- destino com menor preço atual;
+- promoções identificadas hoje pelas regras históricas existentes;
+- preços atuais abaixo da média da própria rota;
+- melhor Flight Score;
+- rotas com dados insuficientes.
+
+Ele é determinístico e executado localmente no navegador. Não usa OpenAI ou
+outro serviço de IA, não acessa fontes externas e não pode alterar
+monitoramentos, comprar passagens ou enviar alertas. Perguntas desconhecidas são
+recusadas e acompanhadas da lista de intenções suportadas.
+
+Toda resposta apresenta período, quantidade de consultas e preços, providers
+observados, limitações e confiança da amostra. A análise é histórica e não
+constitui previsão nem garantia de economia.
+
 ## Flight Score
 
 O Flight Score resume a atratividade do preço dentro do monitor e período

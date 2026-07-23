@@ -130,6 +130,7 @@ function promotionRanking(routes) {
       origin: route.origin,
       destination: route.destination,
       current: route.current,
+      currentObservedAt: route.currentObservedAt,
       score: route.score.score,
       confidence: route.score.confidence,
       action: route.recommendation.action,

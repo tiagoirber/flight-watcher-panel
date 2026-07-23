@@ -20,6 +20,7 @@ import {
   calculateAuthorizedCombinations,
   validateFlexibleInput,
 } from "./flexible-search.mjs";
+import { answerHistoryQuestion } from "./intelligence.mjs";
 
 const OWNER = "tiagoirber";
 const REPO = "flight-watcher";
@@ -112,6 +113,16 @@ const flexibleFields = document.getElementById("flexibleFields");
 const flexiblePreview = document.getElementById("flexiblePreview");
 const authorizeFlexible = document.getElementById("x_authorize");
 const authorizationText = document.getElementById("authorizationText");
+const intelligenceForm = document.getElementById("intelligenceForm");
+const intelligenceQuestion = document.getElementById("intelligenceQuestion");
+const intelligencePeriod = document.getElementById("intelligencePeriod");
+const intelligenceAskButton = document.getElementById("intelligenceAskButton");
+const intelligenceStatus = document.getElementById("intelligenceStatus");
+const intelligenceAnswer = document.getElementById("intelligenceAnswer");
+const intelligenceFacts = document.getElementById("intelligenceFacts");
+const intelligenceLimitations = document.getElementById(
+  "intelligenceLimitations"
+);
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -340,6 +351,11 @@ function clearHistory() {
   alertsTableBody.replaceChildren();
   failuresTableBody.replaceChildren();
   loadHistoryButton.disabled = false;
+  intelligenceAskButton.disabled = true;
+  intelligenceAnswer.hidden = true;
+  intelligenceStatus.textContent =
+    "Carregue o histórico para fazer uma pergunta.";
+  intelligenceStatus.className = "muted";
 }
 
 async function loadPartitions(partitions) {
@@ -831,6 +847,77 @@ function renderHistory() {
   );
 }
 
+function renderIntelligenceList(container, items) {
+  const elements = items.map((item) => {
+    const element = document.createElement("li");
+    if (typeof item === "string") {
+      element.textContent = item;
+      return element;
+    }
+    const label = document.createElement("strong");
+    label.textContent = `${item.label}: `;
+    element.append(label, document.createTextNode(item.value));
+    return element;
+  });
+  container.replaceChildren(...elements);
+}
+
+function intelligencePeriodText(period) {
+  const focus = period.focus ? ` · ${period.focus}` : "";
+  if (!period.firstObservation || !period.lastObservation) {
+    return `${period.label}${focus} · sem observações`;
+  }
+  const first = dateFormatter.format(new Date(period.firstObservation));
+  const last = dateFormatter.format(new Date(period.lastObservation));
+  return `${period.label}${focus} · ${first} a ${last}`;
+}
+
+function askIntelligence() {
+  try {
+    if (!historyRecords.length) {
+      throw new Error("Carregue o histórico antes de analisar.");
+    }
+    const result = answerHistoryQuestion(
+      historyRecords,
+      intelligenceQuestion.value,
+      { period: intelligencePeriod.value }
+    );
+    setText("intelligenceHeadline", result.headline);
+    setText("intelligenceText", result.answer);
+    setText("intelligencePeriodResult", intelligencePeriodText(result.period));
+    setText(
+      "intelligenceSample",
+      `${result.observations.queries} consultas / ` +
+        `${result.observations.prices} preços`
+    );
+    const providers = result.source.providers.length
+      ? result.source.providers.join(", ")
+      : "sem provider observado";
+    setText(
+      "intelligenceSource",
+      `${result.source.dataset} · ${providers} · sem fonte externa`
+    );
+    setText(
+      "intelligenceConfidence",
+      `${result.confidence.percentage}% · ${result.confidence.level}`
+    );
+    setText("intelligenceConfidenceBasis", result.confidence.basis);
+    renderIntelligenceList(intelligenceFacts, result.facts);
+    renderIntelligenceList(intelligenceLimitations, result.limitations);
+    intelligenceAnswer.hidden = false;
+    intelligenceStatus.textContent =
+      result.intent === "unsupported"
+        ? "Pergunta recusada com segurança."
+        : "Resposta calculada exclusivamente com o histórico carregado.";
+    intelligenceStatus.className =
+      result.intent === "unsupported" ? "err" : "ok";
+  } catch (error) {
+    intelligenceAnswer.hidden = true;
+    intelligenceStatus.textContent = `Não foi possível analisar: ${error.message}`;
+    intelligenceStatus.className = "err";
+  }
+}
+
 async function loadScheduleInterval() {
   try {
     const workflowText = await loadRepositoryText(
@@ -845,6 +932,8 @@ async function loadScheduleInterval() {
 async function loadHistory() {
   const version = ++historyLoadVersion;
   loadHistoryButton.disabled = true;
+  intelligenceAskButton.disabled = true;
+  intelligenceAnswer.hidden = true;
   showHistoryStatus("Carregando histórico…", true);
   try {
     const manifestText = await loadRepositoryText(
@@ -859,11 +948,17 @@ async function loadHistory() {
 
     historyRecords = mergeHistorySegments(segments);
     scheduleIntervalMinutes = intervalMinutes;
+    intelligenceAskButton.disabled = false;
+    intelligenceStatus.textContent =
+      "Histórico carregado. Escolha ou escreva uma pergunta suportada.";
+    intelligenceStatus.className = "muted";
     populateHistoryMonitors(historyRecords);
     renderHistory();
   } catch (error) {
     if (version !== historyLoadVersion) return;
     historyContent.hidden = true;
+    intelligenceAskButton.disabled = true;
+    intelligenceAnswer.hidden = true;
     showHistoryStatus(`Erro ao carregar histórico: ${error.message}`, false);
   } finally {
     if (version === historyLoadVersion) loadHistoryButton.disabled = false;
@@ -1018,6 +1113,10 @@ historyMonitor.addEventListener("change", renderHistory);
 historyPeriod.addEventListener("change", renderHistory);
 dashboardPeriod.addEventListener("change", () => {
   if (historyRecords.length) renderDashboard();
+});
+intelligenceForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  askIntelligence();
 });
 document.getElementById("flightForm").addEventListener("submit", (event) => {
   event.preventDefault();
