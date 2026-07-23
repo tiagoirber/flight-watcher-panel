@@ -16,6 +16,21 @@ O manifesto e os segmentos JSONL são lidos diretamente do repositório privado.
 O painel não publica uma cópia dos dados e não usa backend ou serviço de
 terceiros. Amostras curtas e ausência de companhia são indicadas na interface.
 
+## Buscas flexíveis
+
+Além de rotas e datas fixas, o formulário aceita uma definição flexível com
+aeroportos principais e alternativos, região explícita, janela de partida,
+intervalo de estadia, orçamento, máximo de escalas e prioridade.
+
+A prévia local deduplica os códigos IATA e calcula o produto cartesiano. O envio
+só é liberado após a autorização explícita da quantidade exibida, limitada a 64
+combinações. Qualquer alteração nos campos invalida essa autorização. O
+workflow privado valida e recalcula a definição antes de gravá-la.
+
+O painel também permite pausar, retomar e remover monitoramentos. No histórico,
+consultas concretas de uma busca flexível exibem o identificador do grupo sem
+misturar séries de rotas e datas diferentes.
+
 ## Flight Score
 
 O Flight Score resume a atratividade do preço dentro do monitor e período
@@ -101,7 +116,7 @@ Permissões mínimas do fine-grained PAT:
 Não há dependências npm. Execute com Node 22 ou superior:
 
 ```text
-node --test tests/validation.test.mjs tests/security.test.mjs tests/history.test.mjs tests/score.test.mjs tests/recommendation.test.mjs tests/dashboard.test.mjs
+node --test
 ```
 
 Os testes não acessam a API do GitHub e não modificam o repositório principal.

@@ -16,6 +16,10 @@ import {
 import { calculateFlightScore } from "./score.mjs";
 import { calculateRecommendation } from "./recommendation.mjs";
 import { buildDashboard, parseScheduleInterval } from "./dashboard.mjs";
+import {
+  calculateAuthorizedCombinations,
+  validateFlexibleInput,
+} from "./flexible-search.mjs";
 
 const OWNER = "tiagoirber";
 const REPO = "flight-watcher";
@@ -26,6 +30,7 @@ let sessionToken = "";
 let historyRecords = [];
 let historyLoadVersion = 0;
 let scheduleIntervalMinutes = null;
+let previewedCombinations = null;
 
 const tokenInput = document.getElementById("token");
 const tokenStatus = document.getElementById("tokenStatus");
@@ -101,6 +106,12 @@ const failureSummary = document.getElementById("failureSummary");
 const failuresEmpty = document.getElementById("failuresEmpty");
 const failuresTable = document.getElementById("failuresTable");
 const failuresTableBody = document.getElementById("failuresTableBody");
+const flightMode = document.getElementById("f_mode");
+const fixedFields = document.getElementById("fixedFields");
+const flexibleFields = document.getElementById("flexibleFields");
+const flexiblePreview = document.getElementById("flexiblePreview");
+const authorizeFlexible = document.getElementById("x_authorize");
+const authorizationText = document.getElementById("authorizationText");
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -210,7 +221,57 @@ async function loadRepositoryText(path) {
   return decodeBase64Utf8(data.content);
 }
 
+function createFlexibleFlightListItem(flight) {
+  const item = document.createElement("li");
+  const id = String(flight.id ?? "sem-id");
+  const enabled = flight.enabled !== false;
+  const origins = [
+    ...(flight.origins ?? []),
+    ...(flight.alternative_origins ?? []),
+  ];
+  const destinations = [
+    ...(flight.destinations ?? []),
+    ...(flight.region?.airports ?? []),
+    ...(flight.alternative_destinations ?? []),
+  ];
+  const strong = document.createElement("strong");
+  strong.textContent = id;
+  item.append(
+    strong,
+    document.createTextNode(
+      `: flexível | ${origins.join(", ") || "?"} → ` +
+        `${destinations.join(", ") || "?"} | idas ${String(
+          flight.departure_start ?? "?"
+        )} a ${String(flight.departure_end ?? "?")} | ` +
+        `${String(flight.authorized_combinations ?? "?")} combinações | ` +
+        `${enabled ? "ativo" : "pausado"} `
+    )
+  );
+
+  appendLifecycleButtons(item, id, enabled);
+  return item;
+}
+
+function appendLifecycleButtons(item, id, enabled) {
+  const statusButton = document.createElement("button");
+  statusButton.type = "button";
+  statusButton.textContent = enabled ? "Pausar" : "Retomar";
+  statusButton.addEventListener("click", () =>
+    changeFlightStatus(id, enabled ? "pause" : "resume")
+  );
+  item.appendChild(statusButton);
+
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.textContent = "Remover";
+  removeButton.addEventListener("click", () => removeFlight(id));
+  item.appendChild(removeButton);
+}
+
 function createFlightListItem(flight) {
+  if (flight.mode === "flexible") {
+    return createFlexibleFlightListItem(flight);
+  }
   const item = document.createElement("li");
   const id = String(flight.id ?? "sem-id");
   const origin = String(flight.origin ?? "?");
@@ -230,11 +291,7 @@ function createFlightListItem(flight) {
     )
   );
 
-  const removeButton = document.createElement("button");
-  removeButton.type = "button";
-  removeButton.textContent = "Remover";
-  removeButton.addEventListener("click", () => removeFlight(id));
-  item.appendChild(removeButton);
+  appendLifecycleButtons(item, id, flight.enabled !== false);
   return item;
 }
 
@@ -318,6 +375,9 @@ function populateHistoryMonitors(records) {
       option.textContent = `${monitorId} — ${String(record.origin ?? "?")} → ${String(
         record.destination ?? "?"
       )}`;
+      if (record.search_group_id) {
+        option.textContent = `${String(record.search_group_id)} · ${option.textContent}`;
+      }
       return option;
     });
   historyMonitor.replaceChildren(...options);
@@ -831,9 +891,69 @@ function collectFlightInput() {
   };
 }
 
+function collectFlexibleInput() {
+  return {
+    id: document.getElementById("f_id").value,
+    origins: document.getElementById("x_origins").value,
+    alternative_origins: document.getElementById("x_alternative_origins").value,
+    destinations: document.getElementById("x_destinations").value,
+    alternative_destinations: document.getElementById(
+      "x_alternative_destinations"
+    ).value,
+    region_name: document.getElementById("x_region_name").value,
+    region_airports: document.getElementById("x_region_airports").value,
+    departure_start: document.getElementById("x_departure_start").value,
+    departure_end: document.getElementById("x_departure_end").value,
+    min_stay_days: document.getElementById("x_min_stay").value,
+    max_stay_days: document.getElementById("x_max_stay").value,
+    budget: document.getElementById("x_budget").value,
+    max_stops: document.getElementById("x_max_stops").value,
+    priority: document.getElementById("x_priority").value,
+    enabled: document.getElementById("x_enabled").checked,
+    notifications_enabled: document.getElementById("x_notifications").checked,
+  };
+}
+
+function invalidateFlexiblePreview() {
+  previewedCombinations = null;
+  authorizeFlexible.checked = false;
+  authorizeFlexible.disabled = true;
+  authorizationText.textContent = "Aguardando prévia.";
+  flexiblePreview.textContent = "Calcule a prévia para autorizar a busca.";
+  flexiblePreview.className = "notice";
+}
+
+function previewFlexibleSearch() {
+  try {
+    const preview = calculateAuthorizedCombinations(collectFlexibleInput());
+    previewedCombinations = preview.count;
+    authorizeFlexible.checked = false;
+    authorizeFlexible.disabled = false;
+    authorizationText.textContent =
+      `Autorizo exatamente ${preview.count} combinações, processadas em ` +
+      "lotes de até 8 consultas totais por execução.";
+    flexiblePreview.textContent =
+      `${preview.count} combinações válidas. O monitor percorre a fila ` +
+      "gradualmente; voos fixos têm precedência.";
+    flexiblePreview.className = "ok";
+  } catch (error) {
+    invalidateFlexiblePreview();
+    flexiblePreview.textContent = `Prévia inválida: ${error.message}`;
+    flexiblePreview.className = "err";
+  }
+}
+
 async function addFlight() {
   try {
-    const inputs = validateFlightInput(collectFlightInput());
+    const inputs =
+      flightMode.value === "flexible"
+        ? validateFlexibleInput({
+            ...collectFlexibleInput(),
+            confirmed_combinations: authorizeFlexible.checked
+              ? previewedCombinations
+              : null,
+          })
+        : { ...validateFlightInput(collectFlightInput()), mode: "fixed" };
     await dispatch(inputs);
     showLog(
       `Voo '${inputs.id}' enviado para adição ou atualização. Pode levar cerca ` +
@@ -842,6 +962,24 @@ async function addFlight() {
     );
   } catch (error) {
     showLog(`Erro ao adicionar ou atualizar: ${error.message}`, false);
+  }
+}
+
+async function changeFlightStatus(rawId, action) {
+  try {
+    const id = validateFlightId(rawId);
+    if (!["pause", "resume"].includes(action)) {
+      throw new Error("Ação de status inválida.");
+    }
+    await dispatch({ action, id });
+    showLog(
+      `Monitoramento '${id}' enviado para ${
+        action === "pause" ? "pausa" : "retomada"
+      }. Depois de cerca de um minuto, clique em Atualizar lista.`,
+      true
+    );
+  } catch (error) {
+    showLog(`Erro ao alterar status: ${error.message}`, false);
   }
 }
 
@@ -885,6 +1023,18 @@ document.getElementById("flightForm").addEventListener("submit", (event) => {
   event.preventDefault();
   addFlight();
 });
+flightMode.addEventListener("change", () => {
+  const flexible = flightMode.value === "flexible";
+  fixedFields.hidden = flexible;
+  flexibleFields.hidden = !flexible;
+  invalidateFlexiblePreview();
+});
+flexibleFields.addEventListener("input", (event) => {
+  if (event.target !== authorizeFlexible) invalidateFlexiblePreview();
+});
+document
+  .getElementById("previewFlexibleButton")
+  .addEventListener("click", previewFlexibleSearch);
 
 eraseLegacyStoredToken();
 updateTokenStatus();

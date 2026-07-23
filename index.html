@@ -350,48 +350,143 @@
     </div>
   </section>
 
-  <h2>4. Adicionar ou atualizar voo</h2>
+  <h2>4. Adicionar ou atualizar monitoramento</h2>
   <form id="flightForm" novalidate>
     <label for="f_id">ID único (ex: bsb-cgh-nov26)</label>
     <input id="f_id" maxlength="64" autocomplete="off">
 
-    <div class="row">
-      <div>
-        <label for="f_origin">Origem (IATA, ex: BSB)</label>
-        <input id="f_origin" maxlength="3" autocomplete="off" spellcheck="false">
-      </div>
-      <div>
-        <label for="f_destination">Destino (IATA, ex: CGH)</label>
-        <input id="f_destination" maxlength="3" autocomplete="off" spellcheck="false">
-      </div>
-    </div>
+    <label for="f_mode">Tipo de busca</label>
+    <select id="f_mode">
+      <option value="fixed">Datas e rota fixas</option>
+      <option value="flexible">Datas, destinos ou aeroportos flexíveis</option>
+    </select>
 
-    <div class="row">
-      <div>
-        <label for="f_origin_name">Nome da cidade de origem</label>
-        <input id="f_origin_name" maxlength="100" autocomplete="off">
+    <fieldset id="fixedFields">
+      <legend>Busca fixa</legend>
+      <div class="row">
+        <div>
+          <label for="f_origin">Origem (IATA, ex: BSB)</label>
+          <input id="f_origin" maxlength="3" autocomplete="off" spellcheck="false">
+        </div>
+        <div>
+          <label for="f_destination">Destino (IATA, ex: CGH)</label>
+          <input id="f_destination" maxlength="3" autocomplete="off" spellcheck="false">
+        </div>
       </div>
-      <div>
-        <label for="f_destination_name">Nome da cidade de destino</label>
-        <input id="f_destination_name" maxlength="100" autocomplete="off">
-      </div>
-    </div>
 
-    <div class="row">
-      <div>
-        <label for="f_departure">Data de ida (AAAA-MM-DD)</label>
-        <input id="f_departure" placeholder="2026-12-01" autocomplete="off">
+      <div class="row">
+        <div>
+          <label for="f_origin_name">Nome da cidade de origem</label>
+          <input id="f_origin_name" maxlength="100" autocomplete="off">
+        </div>
+        <div>
+          <label for="f_destination_name">Nome da cidade de destino</label>
+          <input id="f_destination_name" maxlength="100" autocomplete="off">
+        </div>
       </div>
-      <div>
-        <label for="f_return">Data de volta (AAAA-MM-DD)</label>
-        <input id="f_return" placeholder="2026-12-05" autocomplete="off">
+
+      <div class="row">
+        <div>
+          <label for="f_departure">Data de ida (AAAA-MM-DD)</label>
+          <input id="f_departure" placeholder="2026-12-01" autocomplete="off">
+        </div>
+        <div>
+          <label for="f_return">Data de volta (AAAA-MM-DD)</label>
+          <input id="f_return" placeholder="2026-12-05" autocomplete="off">
+        </div>
       </div>
-    </div>
 
-    <label for="f_alert_below">Avisar só abaixo de (R$, opcional)</label>
-    <input id="f_alert_below" placeholder="deixe vazio para avisar sempre" autocomplete="off">
+      <label for="f_alert_below">Avisar só abaixo de (R$, opcional)</label>
+      <input id="f_alert_below" placeholder="deixe vazio para avisar sempre" autocomplete="off">
+    </fieldset>
 
-    <button type="submit">Adicionar ou atualizar voo</button>
+    <fieldset id="flexibleFields" hidden>
+      <legend>Busca flexível limitada</legend>
+      <p class="notice">
+        Informe aeroportos IATA explícitos, separados por vírgula. A prévia
+        calcula todas as combinações antes de autorizar o monitoramento.
+      </p>
+
+      <label for="x_origins">Origens principais</label>
+      <input id="x_origins" placeholder="BSB" autocomplete="off" spellcheck="false">
+
+      <label for="x_alternative_origins">Origens alternativas (opcional)</label>
+      <input id="x_alternative_origins" placeholder="GYN" autocomplete="off" spellcheck="false">
+
+      <label for="x_destinations">Destinos específicos (opcional com região)</label>
+      <input id="x_destinations" placeholder="GRU, CGH" autocomplete="off" spellcheck="false">
+
+      <label for="x_alternative_destinations">Destinos alternativos (opcional)</label>
+      <input id="x_alternative_destinations" placeholder="VCP" autocomplete="off" spellcheck="false">
+
+      <div class="row">
+        <div>
+          <label for="x_region_name">Nome da região (opcional)</label>
+          <input id="x_region_name" maxlength="100" placeholder="Sudeste" autocomplete="off">
+        </div>
+        <div>
+          <label for="x_region_airports">Aeroportos da região</label>
+          <input id="x_region_airports" placeholder="GRU, CGH, VCP" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="x_departure_start">Primeira data de ida</label>
+          <input id="x_departure_start" type="date">
+        </div>
+        <div>
+          <label for="x_departure_end">Última data de ida</label>
+          <input id="x_departure_end" type="date">
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="x_min_stay">Estadia mínima (dias)</label>
+          <input id="x_min_stay" type="number" min="1" max="30" value="7">
+        </div>
+        <div>
+          <label for="x_max_stay">Estadia máxima (dias)</label>
+          <input id="x_max_stay" type="number" min="1" max="30" value="7">
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="x_budget">Orçamento máximo (R$, opcional)</label>
+          <input id="x_budget" type="number" min="0.01" step="0.01">
+        </div>
+        <div>
+          <label for="x_max_stops">Máximo de escalas</label>
+          <select id="x_max_stops">
+            <option value="">Qualquer quantidade</option>
+            <option value="0">Somente diretos</option>
+            <option value="1">Até 1 escala</option>
+            <option value="2">Até 2 escalas</option>
+          </select>
+        </div>
+      </div>
+
+      <label for="x_priority">Prioridade (1–100)</label>
+      <input id="x_priority" type="number" min="1" max="100" value="50">
+
+      <div class="checkbox-row">
+        <label><input id="x_enabled" type="checkbox" checked> Iniciar ativo</label>
+        <label><input id="x_notifications" type="checkbox"> Enviar alerta do menor preço do grupo</label>
+      </div>
+
+      <button type="button" id="previewFlexibleButton">Calcular prévia</button>
+      <div id="flexiblePreview" class="notice" aria-live="polite">
+        Calcule a prévia para autorizar a busca.
+      </div>
+      <label class="authorization">
+        <input id="x_authorize" type="checkbox" disabled>
+        <span id="authorizationText">Aguardando prévia.</span>
+      </label>
+    </fieldset>
+
+    <button type="submit">Adicionar ou atualizar monitoramento</button>
   </form>
 
   <div id="log" aria-live="polite"></div>

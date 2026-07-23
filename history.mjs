@@ -27,6 +27,30 @@ function validObservedAt(value) {
   return typeof value === "string" && Number.isFinite(Date.parse(value));
 }
 
+function validFlexibleMetadata(value) {
+  const flexibleFields = [
+    "search_group_id",
+    "search_mode",
+    "budget",
+    "max_stops",
+    "is_alternative_origin",
+    "is_alternative_destination",
+  ];
+  if (!flexibleFields.some((field) => Object.hasOwn(value, field))) return true;
+  return (
+    value.search_mode === "flexible" &&
+    typeof value.search_group_id === "string" &&
+    value.search_group_id.length > 0 &&
+    (value.budget === null || finitePrice(value.budget)) &&
+    (value.max_stops === null ||
+      (Number.isInteger(value.max_stops) &&
+        value.max_stops >= 0 &&
+        value.max_stops <= 2)) &&
+    typeof value.is_alternative_origin === "boolean" &&
+    typeof value.is_alternative_destination === "boolean"
+  );
+}
+
 export function validateManifest(value) {
   if (
     !isObject(value) ||
@@ -80,7 +104,8 @@ function validateObservation(value) {
     typeof value.status !== "string" ||
     !value.status ||
     (value.price !== null && !finitePrice(value.price)) ||
-    (value.carrier !== null && typeof value.carrier !== "string")
+    (value.carrier !== null && typeof value.carrier !== "string") ||
+    !validFlexibleMetadata(value)
   ) {
     throw new HistoryDataError("Registro de histórico inválido.");
   }

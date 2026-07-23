@@ -94,6 +94,43 @@ test("parses JSONL and enforces manifest record counts", () => {
   );
 });
 
+test("accepts valid optional flexible metadata and rejects malformed metadata", () => {
+  const flexible = observation(1, {
+    search_group_id: "ferias-flexiveis",
+    search_mode: "flexible",
+    budget: 1200,
+    max_stops: 1,
+    is_alternative_origin: false,
+    is_alternative_destination: true,
+  });
+  const content = `${JSON.stringify(flexible)}\n`;
+  assert.equal(
+    parseHistorySegment(
+      content,
+      partition({ bytes: Buffer.byteLength(content, "utf8") })
+    )[0].search_group_id,
+    "ferias-flexiveis"
+  );
+
+  for (const invalid of [
+    { ...observation(2), search_group_id: "orphan-group" },
+    { ...flexible, search_group_id: "" },
+    { ...flexible, budget: -1 },
+    { ...flexible, max_stops: 3 },
+    { ...flexible, is_alternative_origin: "false" },
+  ]) {
+    const invalidContent = `${JSON.stringify(invalid)}\n`;
+    assert.throws(
+      () =>
+        parseHistorySegment(
+          invalidContent,
+          partition({ bytes: Buffer.byteLength(invalidContent, "utf8") })
+        ),
+      HistoryDataError
+    );
+  }
+});
+
 test("rejects duplicate observations across segments", () => {
   const record = observation(1);
   assert.throws(() => mergeHistorySegments([[record], [record]]), /duplicada/);
