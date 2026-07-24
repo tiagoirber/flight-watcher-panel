@@ -93,6 +93,34 @@ test("answers the cheapest current destination instead of the historical minimum
   assertMandatoryMetadata(result);
 });
 
+test("uses the winning route sample for cheapest-destination confidence", () => {
+  const records = [
+    ...route(
+      "well-sampled",
+      "BSB",
+      "IOS",
+      Array.from({ length: 20 }, () => 1000)
+    ),
+    record(23, {
+      monitor_id: "single-price",
+      destination: "CWB",
+      observed_at: "2026-07-23T12:00:00Z",
+      price: 100,
+    }),
+  ];
+
+  const result = answerHistoryQuestion(
+    records,
+    "Qual destino está mais barato?",
+    { now: NOW }
+  );
+
+  assert.match(result.answer, /CWB/);
+  assert.equal(result.confidence.percentage, 27);
+  assert.equal(result.confidence.level, "baixa");
+  assert.match(result.confidence.basis, /1 preço/);
+});
+
 test("lists prices below their own route average", () => {
   const records = [
     ...route("bsb-ios", "BSB", "IOS", [1000, 900, 700]),
@@ -145,6 +173,32 @@ test("identifies routes with insufficient data", () => {
   assert.equal(result.facts.length, 1);
   assert.match(result.facts[0].label, /only-one/);
   assertMandatoryMetadata(result);
+});
+
+test("discloses when a multi-route answer is truncated", () => {
+  const records = [];
+  for (let routeIndex = 0; routeIndex < 6; routeIndex += 1) {
+    records.push(
+      ...route(
+        `route-${routeIndex}`,
+        "BSB",
+        `D${routeIndex}`,
+        [1000, 1000, 500],
+        routeIndex * 3
+      )
+    );
+  }
+
+  const result = answerHistoryQuestion(
+    records,
+    "Quais preços estão abaixo da média?",
+    { now: NOW }
+  );
+
+  assert.equal(result.intent, "below_average");
+  assert.match(result.answer, /6 rota/);
+  assert.equal(result.facts.length, 5);
+  assert.match(result.limitations.join(" "), /Exibindo 5 de 6 resultados/);
 });
 
 test("reports only today's promotions using existing score rules", () => {

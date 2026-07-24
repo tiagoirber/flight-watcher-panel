@@ -49,8 +49,11 @@ monitoramentos, comprar passagens ou enviar alertas. Perguntas desconhecidas sã
 recusadas e acompanhadas da lista de intenções suportadas.
 
 Toda resposta apresenta período, quantidade de consultas e preços, providers
-observados, limitações e confiança da amostra. A análise é histórica e não
-constitui previsão nem garantia de economia.
+observados, limitações e confiança da amostra relevante. Respostas sobre uma
+rota usam somente a amostra dessa rota; respostas com várias rotas adotam a
+menor confiança entre elas. Quando uma lista excede o limite visual, o total e a
+quantidade exibida são informados. A análise é histórica e não constitui
+previsão nem garantia de economia.
 
 ## Flight Score
 

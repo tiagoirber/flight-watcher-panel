@@ -121,6 +121,43 @@ function aggregateConfidence(records) {
   };
 }
 
+function routeConfidence(records, monitorId) {
+  return aggregateConfidence(
+    records.filter((record) => record.monitor_id === monitorId)
+  );
+}
+
+function conservativeRouteConfidence(records, routes, fallback) {
+  const candidates = routes
+    .filter((route) => route?.monitorId)
+    .map((route) => ({
+      monitorId: route.monitorId,
+      confidence: routeConfidence(records, route.monitorId),
+    }))
+    .sort(
+      (left, right) =>
+        left.confidence.percentage - right.confidence.percentage ||
+        left.monitorId.localeCompare(right.monitorId)
+    );
+  const weakest = candidates[0];
+  if (!weakest) return fallback;
+  return {
+    percentage: weakest.confidence.percentage,
+    level: weakest.confidence.level,
+    basis:
+      `Menor confiança entre ${candidates.length} rota(s), em ` +
+      `${weakest.monitorId}: ${weakest.confidence.basis}`,
+  };
+}
+
+function discloseTruncation(result, total, shown) {
+  if (total > shown) {
+    result.limitations.push(
+      `Exibindo ${shown} de ${total} resultados, ordenados pelos critérios informados.`
+    );
+  }
+}
+
 function confidenceFromScore(score, fallback) {
   if (!score || !Number.isFinite(score.confidence)) return fallback;
   return {
@@ -222,7 +259,7 @@ function largestDrop(result, dashboard) {
   return result;
 }
 
-function cheapestDestination(result, dashboard) {
+function cheapestDestination(result, dashboard, _now, records) {
   const routes = dashboard.promotionRanking
     .filter((route) => finitePrice(route.current))
     .sort(
@@ -247,10 +284,11 @@ function cheapestDestination(result, dashboard) {
     { label: "Preço atual", value: currency(route.current) },
     { label: "Monitor", value: route.monitorId },
   ];
+  result.confidence = routeConfidence(records, route.monitorId);
   return result;
 }
 
-function promotionsToday(result, dashboard, now) {
+function promotionsToday(result, dashboard, now, records) {
   const today = localDateKey(normalizeNow(now));
   const promotions = dashboard.promotionRanking.filter(
     (route) =>
@@ -271,21 +309,23 @@ function promotionsToday(result, dashboard, now) {
   result.answer =
     `${promotions.length} rota(s) observada(s) hoje satisfizeram os critérios ` +
     "históricos de compra.";
-  result.facts = promotions.slice(0, 5).map((route) => ({
+  const shown = promotions.slice(0, 5);
+  result.facts = shown.map((route) => ({
     label: routeLabel(route),
     value:
       `${currency(route.current)} · score ${route.score}/100 · ` +
       `${route.confidence}% de confiança`,
   }));
-  result.confidence = {
-    percentage: promotions[0].confidence,
-    level: confidenceLabel(promotions[0].confidence),
-    basis: `Confiança do Flight Score da promoção mais bem classificada.`,
-  };
+  discloseTruncation(result, promotions.length, shown.length);
+  result.confidence = conservativeRouteConfidence(
+    records,
+    promotions,
+    result.confidence
+  );
   return result;
 }
 
-function belowAverage(result, dashboard) {
+function belowAverage(result, dashboard, _now, records) {
   const routes = dashboard.promotionRanking
     .filter(
       (route) =>
@@ -306,12 +346,19 @@ function belowAverage(result, dashboard) {
   result.answer =
     `${routes.length} rota(s) têm preço atual abaixo da própria média ` +
     "histórica do período.";
-  result.facts = routes.slice(0, 5).map((route) => ({
+  const shown = routes.slice(0, 5);
+  result.facts = shown.map((route) => ({
     label: routeLabel(route),
     value:
       `${currency(route.current)} · ` +
       `${percentage(route.differenceFromMeanPercent)} versus a média`,
   }));
+  discloseTruncation(result, routes.length, shown.length);
+  result.confidence = conservativeRouteConfidence(
+    records,
+    routes,
+    result.confidence
+  );
   return result;
 }
 
@@ -348,7 +395,7 @@ function bestScore(result, dashboard) {
   return result;
 }
 
-function insufficientData(result, dashboard) {
+function insufficientData(result, dashboard, _now, records) {
   const routes = dashboard.promotionRanking.filter(
     (route) => !Number.isFinite(route.score)
   );
@@ -361,10 +408,17 @@ function insufficientData(result, dashboard) {
   result.answer =
     `${routes.length} rota(s) ainda não atingiram a amostra mínima de três ` +
     "preços distribuídos em dois dias.";
-  result.facts = routes.slice(0, 10).map((route) => ({
+  const shown = routes.slice(0, 10);
+  result.facts = shown.map((route) => ({
     label: routeLabel(route),
     value: `score indisponível · ${route.confidence}% de confiança`,
   }));
+  discloseTruncation(result, routes.length, shown.length);
+  result.confidence = conservativeRouteConfidence(
+    records,
+    routes,
+    result.confidence
+  );
   return result;
 }
 
@@ -405,5 +459,5 @@ export function answerHistoryQuestion(
     best_score: bestScore,
     insufficient_data: insufficientData,
   };
-  return handlers[intent](result, dashboard, now);
+  return handlers[intent](result, dashboard, now, selected);
 }
