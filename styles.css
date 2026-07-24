@@ -9,7 +9,8 @@ body {
   font-family: var(--font-sans);
   margin: 2rem auto;
   max-width: 960px;
-  padding: 0 1rem;
+  padding: env(safe-area-inset-top) max(1rem, env(safe-area-inset-right)) 0
+    max(1rem, env(safe-area-inset-left));
 }
 
 h1,
