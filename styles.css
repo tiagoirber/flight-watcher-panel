@@ -518,10 +518,6 @@ tbody tr:hover {
   background: #f8fbff;
 }
 
-.credential-username {
-  display: none;
-}
-
 #flights {
   padding: 0;
 }

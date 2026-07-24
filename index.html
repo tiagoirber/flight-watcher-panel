@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https://api.github.com; img-src 'self' data:; base-uri 'none'; object-src 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https://REPLACE-WITH-YOUR-WORKER-URL.workers.dev; img-src 'self' data:; base-uri 'none'; object-src 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Flight Watcher — Painel</title>
   <link rel="stylesheet" href="styles.css">
@@ -14,37 +14,25 @@
     editar código.
   </p>
 
-  <h2>1. Token de acesso</h2>
+  <h2>1. Acesso ao painel</h2>
   <p class="muted">
-    Crie um <b>fine-grained personal access token</b> em
-    github.com/settings/tokens, com acesso somente ao repositório
-    <code>tiagoirber/flight-watcher</code> e permissões
-    <b>Actions: Read and write</b> e <b>Contents: Read-only</b>.
-    O token fica apenas na memória desta aba. O gerenciador de senhas do
-    navegador pode salvá-lo e preencher o campo em visitas futuras.
+    Entre com a senha configurada para este painel. A sessão fica salva
+    neste navegador (sem depender do gerenciador de senhas) até você clicar
+    em "Sair" — não precisa mais colar nenhum token do GitHub aqui; ele fica
+    só no servidor que atende este painel.
   </p>
-  <form id="tokenForm" autocomplete="on">
-    <input
-      class="credential-username"
-      type="text"
-      name="username"
-      value="flight-watcher"
-      autocomplete="username"
-      tabindex="-1"
-      aria-hidden="true"
-    >
-    <label for="token">Token do GitHub</label>
+  <form id="loginForm" autocomplete="off">
+    <label for="password">Senha do painel</label>
     <input
       type="password"
-      id="token"
+      id="password"
       name="password"
-      autocomplete="current-password"
-      placeholder="github_pat_..."
+      autocomplete="off"
       spellcheck="false"
     >
-    <button type="submit">Usar token nesta sessão</button>
-    <button type="button" id="clearTokenButton">Limpar token</button>
-    <span id="tokenStatus" class="muted" aria-live="polite"></span>
+    <button type="submit">Entrar</button>
+    <button type="button" id="logoutButton">Sair</button>
+    <span id="loginStatus" class="muted" aria-live="polite"></span>
   </form>
 
   <h2>2. Voos monitorados</h2>

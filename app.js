@@ -1,8 +1,4 @@
-import {
-  looksLikeGitHubToken,
-  validateFlightId,
-  validateFlightInput,
-} from "./validation.mjs";
+import { validateFlightId, validateFlightInput } from "./validation.mjs";
 import {
   calculateStatistics,
   chartSeries,
@@ -22,19 +18,17 @@ import {
 } from "./flexible-search.mjs";
 import { answerHistoryQuestion } from "./intelligence.mjs";
 
-const OWNER = "tiagoirber";
-const REPO = "flight-watcher";
-const WORKFLOW = "manage-flights.yml";
-const API = `https://api.github.com/repos/${OWNER}/${REPO}`;
+const WORKER_BASE_URL = "https://REPLACE-WITH-YOUR-WORKER-URL.workers.dev";
+const SESSION_STORAGE_KEY = "fw_session";
 
-let sessionToken = "";
+let panelSessionToken = "";
 let historyRecords = [];
 let historyLoadVersion = 0;
 let scheduleIntervalMinutes = null;
 let previewedCombinations = null;
 
-const tokenInput = document.getElementById("token");
-const tokenStatus = document.getElementById("tokenStatus");
+const passwordInput = document.getElementById("password");
+const loginStatus = document.getElementById("loginStatus");
 const logElement = document.getElementById("log");
 const flightsElement = document.getElementById("flights");
 const loadHistoryButton = document.getElementById("loadHistoryButton");
@@ -148,39 +142,73 @@ function eraseLegacyStoredToken() {
   }
 }
 
-function getToken() {
-  return sessionToken;
-}
-
-function updateTokenStatus() {
-  tokenStatus.className = "muted";
-  tokenStatus.textContent = getToken()
-    ? "Token disponível somente nesta sessão."
-    : "Nenhum token disponível nesta sessão.";
-}
-
-function saveToken() {
-  const token = tokenInput.value.trim();
-  if (!looksLikeGitHubToken(token)) {
-    sessionToken = "";
-    clearHistory();
-    tokenStatus.textContent =
-      "Isso não parece um token do GitHub. Confira o autofill e informe um " +
-      "token iniciado por github_pat_ ou ghp_.";
-    tokenStatus.className = "err";
-    return;
+function loadStoredSession() {
+  try {
+    return window.localStorage.getItem(SESSION_STORAGE_KEY) || "";
+  } catch {
+    return "";
   }
-  if (sessionToken !== token) clearHistory();
-  sessionToken = token;
-  updateTokenStatus();
 }
 
-function clearToken() {
-  sessionToken = "";
-  tokenInput.value = "";
-  eraseLegacyStoredToken();
-  updateTokenStatus();
+function updateSessionStatus() {
+  loginStatus.className = "muted";
+  loginStatus.textContent = panelSessionToken
+    ? "Sessão ativa neste navegador."
+    : "Nenhuma sessão ativa. Entre com a senha do painel.";
+}
+
+function setSession(token) {
+  panelSessionToken = token;
+  try {
+    window.localStorage.setItem(SESSION_STORAGE_KEY, token);
+  } catch {
+    // Sessão continua funcionando só para esta aba se o storage for bloqueado.
+  }
+  updateSessionStatus();
+}
+
+function clearSession() {
+  panelSessionToken = "";
+  try {
+    window.localStorage.removeItem(SESSION_STORAGE_KEY);
+  } catch {
+    // Ignorado: já não há sessão para limpar nesse caso.
+  }
+  updateSessionStatus();
+}
+
+async function login(event) {
+  event.preventDefault();
+  const password = passwordInput.value;
+  passwordInput.value = "";
+  loginStatus.textContent = "Entrando…";
+  loginStatus.className = "muted";
+  try {
+    const response = await fetch(`${WORKER_BASE_URL}/login`, {
+      method: "POST",
+      cache: "no-store",
+      credentials: "omit",
+      referrerPolicy: "no-referrer",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    if (!response.ok) throw await responseError(response);
+    const data = await response.json();
+    setSession(data.token);
+    loginStatus.textContent =
+      "Sessão iniciada. Ela continua válida neste navegador até você sair.";
+    loginStatus.className = "ok";
+  } catch (error) {
+    clearSession();
+    loginStatus.textContent = `Erro ao entrar: ${error.message}`;
+    loginStatus.className = "err";
+  }
+}
+
+function logout() {
+  clearSession();
   clearHistory();
+  showLog("Sessão encerrada neste navegador.", true);
 }
 
 function showLog(message, ok) {
@@ -193,21 +221,26 @@ async function responseError(response) {
   return new Error(`HTTP ${response.status}: ${body}`);
 }
 
-async function githubFetch(path, options = {}) {
-  const token = getToken();
-  if (!token) throw new Error("Use um token nesta sessão primeiro.");
+async function workerFetch(path, options = {}) {
+  if (!panelSessionToken) {
+    throw new Error("Entre com a senha do painel primeiro.");
+  }
 
-  return fetch(`${API}${path}`, {
+  const response = await fetch(`${WORKER_BASE_URL}${path}`, {
     ...options,
     cache: "no-store",
     credentials: "omit",
     referrerPolicy: "no-referrer",
     headers: {
       ...(options.headers || {}),
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${panelSessionToken}`,
     },
   });
+  if (response.status === 401) {
+    clearSession();
+    throw new Error("Sessão expirada ou inválida. Entre novamente com a senha.");
+  }
+  return response;
 }
 
 function decodeBase64Utf8(content) {
@@ -222,7 +255,7 @@ function encodeRepositoryPath(path) {
 
 async function loadRepositoryText(path) {
   const encodedPath = encodeRepositoryPath(path);
-  const response = await githubFetch(`/contents/${encodedPath}?ref=master`);
+  const response = await workerFetch(`/repo/${encodedPath}`);
   if (!response.ok) throw await responseError(response);
 
   const data = await response.json();
@@ -966,8 +999,9 @@ async function loadHistory() {
 }
 
 async function dispatch(inputs) {
-  const response = await githubFetch(`/actions/workflows/${WORKFLOW}/dispatches`, {
+  const response = await workerFetch("/dispatch", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ref: "master", inputs }),
   });
   if (response.status !== 204) throw await responseError(response);
@@ -1093,20 +1127,9 @@ async function removeFlight(rawId) {
   }
 }
 
-document.getElementById("tokenForm").addEventListener("submit", (event) => {
-  event.preventDefault();
-  saveToken();
-});
+document.getElementById("loginForm").addEventListener("submit", login);
+document.getElementById("logoutButton").addEventListener("click", logout);
 
-tokenInput.addEventListener("input", () => {
-  if (tokenInput.value.trim() !== sessionToken) {
-    sessionToken = "";
-    updateTokenStatus();
-    clearHistory();
-  }
-});
-
-document.getElementById("clearTokenButton").addEventListener("click", clearToken);
 document.getElementById("loadFlightsButton").addEventListener("click", loadFlights);
 loadHistoryButton.addEventListener("click", loadHistory);
 historyMonitor.addEventListener("change", renderHistory);
@@ -1136,4 +1159,5 @@ document
   .addEventListener("click", previewFlexibleSearch);
 
 eraseLegacyStoredToken();
-updateTokenStatus();
+panelSessionToken = loadStoredSession();
+updateSessionStatus();

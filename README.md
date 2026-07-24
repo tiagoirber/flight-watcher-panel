@@ -12,9 +12,11 @@ Também lê o histórico persistente v1 para exibir:
 - comparação por companhia, quando o campo estiver disponível;
 - filtros por período e tabela de todas as consultas.
 
-O manifesto e os segmentos JSONL são lidos diretamente do repositório privado.
-O painel não publica uma cópia dos dados e não usa backend ou serviço de
-terceiros. Amostras curtas e ausência de companhia são indicadas na interface.
+O manifesto e os segmentos JSONL são lidos do repositório privado através de
+um proxy autenticado (Cloudflare Worker) descrito na seção "Configuração do
+acesso" abaixo — o painel em si continua estático e sem dados sensíveis
+publicados. Amostras curtas e ausência de companhia são indicadas na
+interface.
 
 ## Buscas flexíveis
 
@@ -124,16 +126,48 @@ As médias sempre mostram o tamanho da amostra. Enquanto `carrier` não estiver
 presente nas observações, a média por companhia exibe um estado indisponível em
 vez de inferir ou inventar a empresa.
 
-## Segurança do token
+## Configuração do acesso (proxy Cloudflare Worker)
 
-O token do GitHub permanece somente na memória da aba. Ele não é salvo em
-`localStorage` ou `sessionStorage`. Para persistência entre visitas, use o
-gerenciador de senhas do navegador.
+O painel nunca lida com o token do GitHub. Em vez disso, um Cloudflare Worker
+(`worker/index.js`, publicado a partir deste mesmo repositório) guarda o
+token real como secret e expõe 3 rotas ao painel: `POST /login` (senha →
+token de sessão), `GET /repo/*path` (leitura restrita a `config/`, `data/` e
+`.github/workflows/monitor.yml`) e `POST /dispatch` (aciona o workflow
+`manage-flights.yml`). Veja o design completo em
+`docs/superpowers/specs/2026-07-24-panel-auth-proxy-design.md`.
 
-Permissões mínimas do fine-grained PAT:
+O token de sessão devolvido pelo login (não o PAT do GitHub) é salvo em
+`localStorage` do painel e vale por 1 ano — é o que elimina a necessidade de
+colar um token a cada visita. Ele só tem valor para o próprio Worker; mesmo
+vazado, não dá acesso direto ao GitHub. Para revogar todas as sessões de uma
+vez, troque o secret `SESSION_SECRET` no Cloudflare.
 
-- Actions: Read and write
-- Contents: Read-only
+### Deploy do Worker (uma vez, feito pelo usuário)
+
+Requer [Node.js](https://nodejs.org/) e a CLI `wrangler` (`npx wrangler ...`,
+sem necessidade de instalação global) e uma conta gratuita na
+[Cloudflare](https://dash.cloudflare.com/sign-up).
+
+1. `npx wrangler login` — autentica a CLI com sua conta Cloudflare.
+2. `npx wrangler deploy` — publica o Worker em
+   `https://flight-watcher-proxy.<seu-subdomínio>.workers.dev`. Guarde essa
+   URL.
+3. Configure os 3 secrets (cada comando pede o valor interativamente):
+   - `npx wrangler secret put PANEL_PASSWORD` — uma frase-senha longa, não um
+     PIN curto.
+   - `npx wrangler secret put SESSION_SECRET` — uma string aleatória longa
+     (ex.: gerada com `openssl rand -base64 32`).
+   - `npx wrangler secret put GITHUB_PAT` — um fine-grained personal access
+     token criado em github.com/settings/tokens, restrito ao repositório
+     `tiagoirber/flight-watcher`, com permissões **Actions: Read and write**
+     e **Contents: Read-only**.
+4. Substitua o placeholder `REPLACE-WITH-YOUR-WORKER-URL.workers.dev` pela
+   URL real do passo 2 em dois lugares: `index.html` (diretiva
+   `connect-src` da CSP) e `app.js` (constante `WORKER_BASE_URL`).
+5. Publique o painel (commit + push) normalmente.
+
+Para testar o Worker localmente antes de publicar, copie `.dev.vars.example`
+para `.dev.vars` (gitignorado) com valores de teste e rode `npx wrangler dev`.
 
 ## Testes
 

@@ -12,11 +12,6 @@ export class ValidationError extends Error {
   }
 }
 
-export function looksLikeGitHubToken(rawValue) {
-  const value = String(rawValue ?? "").trim();
-  return /^(github_pat_|ghp_|gho_|ghu_|ghs_|ghr_)[A-Za-z0-9_]{20,}$/.test(value);
-}
-
 export function validateFlightId(rawValue) {
   const value = String(rawValue ?? "").trim();
   if (!FLIGHT_ID_RE.test(value)) {

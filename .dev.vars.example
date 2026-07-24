@@ -1,0 +1,6 @@
+# Copie este arquivo para ".dev.vars" (gitignorado) para testar o Worker
+# localmente com "wrangler dev". Em produção, esses valores nunca vão para
+# um arquivo: são configurados como secrets via "wrangler secret put NOME".
+PANEL_PASSWORD=troque-por-uma-frase-senha-longa
+SESSION_SECRET=troque-por-uma-string-aleatoria-longa
+GITHUB_PAT=github_pat_troque_pelo_token_real

@@ -3,7 +3,6 @@ import test from "node:test";
 
 import {
   ValidationError,
-  looksLikeGitHubToken,
   normalizeIata,
   validateAlertBelow,
   validateCityName,
@@ -22,13 +21,6 @@ const validFlight = {
   return_date: "2027-01-26",
   alert_below: "1200",
 };
-
-test("recognizes supported GitHub token formats", () => {
-  assert.equal(looksLikeGitHubToken(`github_pat_${"a".repeat(30)}`), true);
-  assert.equal(looksLikeGitHubToken(`ghp_${"a".repeat(30)}`), true);
-  assert.equal(looksLikeGitHubToken("poker2026"), false);
-  assert.equal(looksLikeGitHubToken(""), false);
-});
 
 test("normalizes a valid flight without changing its schema", () => {
   assert.deepEqual(validateFlightInput({ ...validFlight, origin: "bsb" }), {
