@@ -21,4 +21,4 @@ jobs:
           node-version: "22"
 
       - name: Executar testes
-        run: node --test tests/validation.test.mjs tests/security.test.mjs
+        run: node --test tests/*.test.mjs
