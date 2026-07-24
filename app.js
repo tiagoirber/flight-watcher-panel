@@ -216,9 +216,21 @@ function showLog(message, ok) {
   logElement.className = ok ? "ok" : "err";
 }
 
+function humanizeStatus(status) {
+  const messages = {
+    403: "Ação não permitida (caminho fora da lista liberada ou permissão insuficiente).",
+    404: "Recurso não encontrado no servidor.",
+    422: "O servidor recusou os dados enviados. Confira os campos e tente novamente.",
+  };
+  if (messages[status]) return messages[status];
+  if (status >= 500) {
+    return "O servidor encontrou um problema. Tente novamente em instantes.";
+  }
+  return `O servidor respondeu com um erro inesperado (HTTP ${status}).`;
+}
+
 async function responseError(response) {
-  const body = (await response.text()).slice(0, 1000);
-  return new Error(`HTTP ${response.status}: ${body}`);
+  return new Error(humanizeStatus(response.status));
 }
 
 async function workerFetch(path, options = {}) {
@@ -307,8 +319,25 @@ function appendLifecycleButtons(item, id, enabled) {
 
   const removeButton = document.createElement("button");
   removeButton.type = "button";
+  removeButton.className = "danger";
   removeButton.textContent = "Remover";
-  removeButton.addEventListener("click", () => removeFlight(id));
+  removeButton.dataset.confirming = "false";
+  let confirmResetTimer = null;
+  removeButton.addEventListener("click", () => {
+    if (removeButton.dataset.confirming === "true") {
+      clearTimeout(confirmResetTimer);
+      removeButton.dataset.confirming = "false";
+      removeButton.textContent = "Remover";
+      removeFlight(id);
+      return;
+    }
+    removeButton.dataset.confirming = "true";
+    removeButton.textContent = "Confirmar remoção?";
+    confirmResetTimer = setTimeout(() => {
+      removeButton.dataset.confirming = "false";
+      removeButton.textContent = "Remover";
+    }, 4000);
+  });
   item.appendChild(removeButton);
 }
 
@@ -339,22 +368,62 @@ function createFlightListItem(flight) {
   return item;
 }
 
+async function fetchFlightsList() {
+  const content = JSON.parse(await loadRepositoryText("config/flights.json"));
+  if (!Array.isArray(content.flights)) {
+    throw new Error("A configuração não contém uma lista de voos válida.");
+  }
+  return content.flights;
+}
+
+function renderFlightsList(flights) {
+  flightsElement.replaceChildren(
+    ...flights.map((flight) => createFlightListItem(flight))
+  );
+}
+
+function findFlightById(flights, id) {
+  return flights.find((flight) => String(flight.id) === id);
+}
+
 async function loadFlights() {
   try {
-    const content = JSON.parse(
-      await loadRepositoryText("config/flights.json")
-    );
-    if (!Array.isArray(content.flights)) {
-      throw new Error("A configuração não contém uma lista de voos válida.");
-    }
-
-    flightsElement.replaceChildren(
-      ...content.flights.map((flight) => createFlightListItem(flight))
-    );
+    renderFlightsList(await fetchFlightsList());
     showLog("Lista atualizada.", true);
   } catch (error) {
     showLog(`Erro ao carregar voos: ${error.message}`, false);
   }
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+const WRITE_CONFIRM_INTERVAL_MS = 10000;
+const WRITE_CONFIRM_ATTEMPTS = 9;
+
+async function confirmWriteLanded(sentMessage, isConfirmed) {
+  showLog(`${sentMessage} Confirmando…`, true);
+  for (let attempt = 0; attempt < WRITE_CONFIRM_ATTEMPTS; attempt += 1) {
+    await delay(WRITE_CONFIRM_INTERVAL_MS);
+    let flights;
+    try {
+      flights = await fetchFlightsList();
+    } catch {
+      continue;
+    }
+    renderFlightsList(flights);
+    if (isConfirmed(flights)) {
+      showLog(`${sentMessage} Confirmado na lista.`, true);
+      return;
+    }
+  }
+  const waitedSeconds = (WRITE_CONFIRM_ATTEMPTS * WRITE_CONFIRM_INTERVAL_MS) / 1000;
+  showLog(
+    `${sentMessage} Ainda não apareceu na lista depois de ${waitedSeconds}s. ` +
+      "Clique em Atualizar lista mais tarde para conferir.",
+    false
+  );
 }
 
 function showHistoryStatus(message, ok = true) {
@@ -1084,10 +1153,9 @@ async function addFlight() {
           })
         : { ...validateFlightInput(collectFlightInput()), mode: "fixed" };
     await dispatch(inputs);
-    showLog(
-      `Voo '${inputs.id}' enviado para adição ou atualização. Pode levar cerca ` +
-      "de um minuto para aparecer; depois clique em Atualizar lista.",
-      true
+    await confirmWriteLanded(
+      `Voo '${inputs.id}' enviado para adição ou atualização.`,
+      (flights) => Boolean(findFlightById(flights, inputs.id))
     );
   } catch (error) {
     showLog(`Erro ao adicionar ou atualizar: ${error.message}`, false);
@@ -1101,11 +1169,15 @@ async function changeFlightStatus(rawId, action) {
       throw new Error("Ação de status inválida.");
     }
     await dispatch({ action, id });
-    showLog(
+    const expectedEnabled = action === "resume";
+    await confirmWriteLanded(
       `Monitoramento '${id}' enviado para ${
         action === "pause" ? "pausa" : "retomada"
-      }. Depois de cerca de um minuto, clique em Atualizar lista.`,
-      true
+      }.`,
+      (flights) => {
+        const flight = findFlightById(flights, id);
+        return Boolean(flight) && (flight.enabled !== false) === expectedEnabled;
+      }
     );
   } catch (error) {
     showLog(`Erro ao alterar status: ${error.message}`, false);
@@ -1115,12 +1187,10 @@ async function changeFlightStatus(rawId, action) {
 async function removeFlight(rawId) {
   try {
     const id = validateFlightId(rawId);
-    if (!window.confirm(`Remover o voo '${id}'?`)) return;
     await dispatch({ action: "remove", id });
-    showLog(
-      `Voo '${id}' enviado para remoção. Pode levar cerca de um minuto; ` +
-      "depois clique em Atualizar lista.",
-      true
+    await confirmWriteLanded(
+      `Voo '${id}' enviado para remoção.`,
+      (flights) => !findFlightById(flights, id)
     );
   } catch (error) {
     showLog(`Erro ao remover: ${error.message}`, false);

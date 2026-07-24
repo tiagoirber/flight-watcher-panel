@@ -16,6 +16,19 @@ test("renders untrusted data without innerHTML or inline handlers", async () => 
   assert.doesNotMatch(index, /<script(?![^>]*\bsrc=)[^>]*>/i);
 });
 
+test("removal requires explicit inline confirmation, not a native browser dialog", async () => {
+  const app = await read("app.js");
+
+  assert.doesNotMatch(app, /window\.confirm\(/);
+  assert.match(app, /dataset\.confirming/);
+});
+
+test("the .notice callout uses a full border instead of a side-stripe accent", async () => {
+  const styles = await read("styles.css");
+
+  assert.doesNotMatch(styles, /\.notice\s*\{[^}]*border-left/);
+});
+
 test("never exposes a raw GitHub token to the browser; only a scoped, revocable session token may be persisted", async () => {
   const app = await read("app.js");
 
