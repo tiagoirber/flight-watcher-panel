@@ -18,7 +18,7 @@ import {
 } from "./flexible-search.mjs";
 import { answerHistoryQuestion } from "./intelligence.mjs";
 
-const WORKER_BASE_URL = "https://REPLACE-WITH-YOUR-WORKER-URL.workers.dev";
+const WORKER_BASE_URL = "https://flight-watcher-proxy.tiagoirber.workers.dev";
 const SESSION_STORAGE_KEY = "fw_session";
 
 let panelSessionToken = "";
