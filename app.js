@@ -213,7 +213,9 @@ function logout() {
 
 function showLog(message, ok) {
   logElement.textContent = message;
-  logElement.className = ok ? "ok" : "err";
+  logElement.classList.remove("flap-update");
+  void logElement.offsetWidth; // força reflow para reiniciar a animação de flip
+  logElement.className = `${ok ? "ok" : "err"} flap-update`;
 }
 
 function humanizeStatus(status) {
@@ -277,45 +279,37 @@ async function loadRepositoryText(path) {
   return decodeBase64Utf8(data.content);
 }
 
-function createFlexibleFlightListItem(flight) {
+function createBoardRowShell(id) {
   const item = document.createElement("li");
-  const id = String(flight.id ?? "sem-id");
-  const enabled = flight.enabled !== false;
-  const origins = [
-    ...(flight.origins ?? []),
-    ...(flight.alternative_origins ?? []),
-  ];
-  const destinations = [
-    ...(flight.destinations ?? []),
-    ...(flight.region?.airports ?? []),
-    ...(flight.alternative_destinations ?? []),
-  ];
+  item.className = "board-row flap-update";
+
+  const main = document.createElement("div");
+  main.className = "board-row-main";
   const strong = document.createElement("strong");
   strong.textContent = id;
-  item.append(
-    strong,
-    document.createTextNode(
-      `: flexível | ${origins.join(", ") || "?"} → ` +
-        `${destinations.join(", ") || "?"} | idas ${String(
-          flight.departure_start ?? "?"
-        )} a ${String(flight.departure_end ?? "?")} | ` +
-        `${String(flight.authorized_combinations ?? "?")} combinações | ` +
-        `${enabled ? "ativo" : "pausado"} `
-    )
-  );
+  main.appendChild(strong);
+  item.appendChild(main);
 
-  appendLifecycleButtons(item, id, enabled);
-  return item;
+  const meta = document.createElement("div");
+  meta.className = "board-row-meta";
+  const metaText = document.createElement("span");
+  meta.appendChild(metaText);
+  const actions = document.createElement("div");
+  actions.className = "board-row-actions";
+  meta.appendChild(actions);
+  item.appendChild(meta);
+
+  return { item, main, metaText, actions };
 }
 
-function appendLifecycleButtons(item, id, enabled) {
+function appendLifecycleButtons(container, id, enabled) {
   const statusButton = document.createElement("button");
   statusButton.type = "button";
   statusButton.textContent = enabled ? "Pausar" : "Retomar";
   statusButton.addEventListener("click", () =>
     changeFlightStatus(id, enabled ? "pause" : "resume")
   );
-  item.appendChild(statusButton);
+  container.appendChild(statusButton);
 
   const removeButton = document.createElement("button");
   removeButton.type = "button";
@@ -338,33 +332,58 @@ function appendLifecycleButtons(item, id, enabled) {
       removeButton.textContent = "Remover";
     }, 4000);
   });
-  item.appendChild(removeButton);
+  container.appendChild(removeButton);
+}
+
+function createFlexibleFlightListItem(flight) {
+  const id = String(flight.id ?? "sem-id");
+  const enabled = flight.enabled !== false;
+  const origins = [
+    ...(flight.origins ?? []),
+    ...(flight.alternative_origins ?? []),
+  ];
+  const destinations = [
+    ...(flight.destinations ?? []),
+    ...(flight.region?.airports ?? []),
+    ...(flight.alternative_destinations ?? []),
+  ];
+
+  const { item, main, metaText, actions } = createBoardRowShell(id);
+  main.appendChild(
+    document.createTextNode(
+      `${origins.join(", ") || "?"} → ${destinations.join(", ") || "?"}`
+    )
+  );
+  metaText.textContent =
+    `flexível · idas ${String(flight.departure_start ?? "?")} a ` +
+    `${String(flight.departure_end ?? "?")} · ` +
+    `${String(flight.authorized_combinations ?? "?")} combinações · ` +
+    `${enabled ? "ativo" : "pausado"}`;
+
+  appendLifecycleButtons(actions, id, enabled);
+  return item;
 }
 
 function createFlightListItem(flight) {
   if (flight.mode === "flexible") {
     return createFlexibleFlightListItem(flight);
   }
-  const item = document.createElement("li");
   const id = String(flight.id ?? "sem-id");
   const origin = String(flight.origin ?? "?");
   const destination = String(flight.destination ?? "?");
   const departure = String(flight.departure ?? "?");
   const returnDate = String(flight.return ?? "?");
+  const enabled = flight.enabled !== false;
   const alertText = flight.alert_below
-    ? ` | avisa abaixo de R$ ${String(flight.alert_below)}`
-    : " | avisa sempre que mudar";
+    ? `avisa abaixo de R$ ${String(flight.alert_below)}`
+    : "avisa sempre que mudar";
 
-  const strong = document.createElement("strong");
-  strong.textContent = id;
-  item.append(
-    strong,
-    document.createTextNode(
-      `: ${origin} → ${destination} (${departure} a ${returnDate})${alertText} `
-    )
-  );
+  const { item, main, metaText, actions } = createBoardRowShell(id);
+  main.appendChild(document.createTextNode(`${origin} → ${destination}`));
+  metaText.textContent =
+    `${departure} a ${returnDate} · ${alertText} · ${enabled ? "ativo" : "pausado"}`;
 
-  appendLifecycleButtons(item, id, flight.enabled !== false);
+  appendLifecycleButtons(actions, id, enabled);
   return item;
 }
 
@@ -377,9 +396,11 @@ async function fetchFlightsList() {
 }
 
 function renderFlightsList(flights) {
-  flightsElement.replaceChildren(
-    ...flights.map((flight) => createFlightListItem(flight))
-  );
+  const rows = flights.map((flight) => createFlightListItem(flight));
+  rows.forEach((row, index) => {
+    row.style.animationDelay = `${Math.min(index * 40, 400)}ms`;
+  });
+  flightsElement.replaceChildren(...rows);
 }
 
 function findFlightById(flights, id) {
